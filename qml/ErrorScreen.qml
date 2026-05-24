@@ -8,16 +8,17 @@ import io.mrarm.mcpelauncher 1.0
 
 BaseScreen {
     id: errorScreen
-    property var message: qsTr("<b><font color=\"#f66\">Not logged in</font></b>")
-    property var confirm: qsTr("Authorize the mod to access your Google Credentials")
+    property var message: qsTr("<b><font color=\"#f66\">Launch failed</font></b>")
+    property var confirm: qsTr("OK")
 
     signal finished
 
-    headerContent: TabBar {
-        background: null
-        MTabButton {
-            text: qsTr("Info")
-        }
+    headerContent: MText {
+        text: qsTr("Info")
+        color: "white"
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: 10
     }
 
     TextEdit {

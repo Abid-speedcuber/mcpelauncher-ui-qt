@@ -9,6 +9,7 @@ ColumnLayout {
     id: layout
     spacing: 0
     property var launcher: null
+    property var logModel: null
 
     BaseHeader {
         title: qsTr("Game Log")
@@ -20,8 +21,8 @@ ColumnLayout {
             width: 34
             onClicked: {
                 var text = ""
-                for (var i = 0; i < gameLog.count; i++) {
-                    text += gameLog.get(i).display + "\n"
+                for (var i = 0; logModel && i < logModel.count; i++) {
+                    text += logModel.get(i).display + "\n"
                 }
 
                 launcherSettings.clipboard = text
@@ -98,7 +99,7 @@ ColumnLayout {
         Layout.fillHeight: true
         Layout.fillWidth: true
         id: view
-        model: gameLog
+        model: logModel
         delegate: TextArea {
             id: delegateRoot
             padding: 0
@@ -183,14 +184,14 @@ ColumnLayout {
                 var selEndIndex = keep ? selectionArea.selEndIndex : selectionArea.selStartIndex
                 var selEndPos = keep ? selectionArea.selEndPos : selectionArea.selStartPos
                 var text = ""
-                if (selStartIndex < gameLog.count) {
-                    text += gameLog.get(selStartIndex).display.substring(selStartPos)
+                if (logModel && selStartIndex < logModel.count) {
+                    text += logModel.get(selStartIndex).display.substring(selStartPos)
                 }
-                for (var i = selStartIndex + 1; i < gameLog.count && (i + 1) < selEndIndex; i++) {
-                    text += gameLog.get(i).display + "\n"
+                for (var i = selStartIndex + 1; logModel && i < logModel.count && (i + 1) < selEndIndex; i++) {
+                    text += logModel.get(i).display + "\n"
                 }
-                if (selEndIndex < gameLog.count) {
-                    text += gameLog.get(selEndIndex).display.substring(0, selEndPos)
+                if (logModel && selEndIndex < logModel.count) {
+                    text += logModel.get(selEndIndex).display.substring(0, selEndPos)
                 }
 
                 launcherSettings.clipboard = text
@@ -202,8 +203,10 @@ ColumnLayout {
             onActivated: {
                 selectionArea.selStartPos = 0
                 selectionArea.selStartIndex = 0
-                selectionArea.selEndIndex = gameLog.count - 1
-                selectionArea.selEndPos = gameLog.get(gameLog.count - 1).display.length
+                if (!logModel || logModel.count === 0)
+                    return
+                selectionArea.selEndIndex = logModel.count - 1
+                selectionArea.selEndPos = logModel.get(logModel.count - 1).display.length
                 selectionArea.selectionChanged()
             }
         }

@@ -4,8 +4,8 @@
 #include <QObject>
 #include <QVector>
 #include <QMap>
+#include <QHash>
 #include <QStringList>
-#include "archivalversionlist.h"
 
 class CodeInfo : public QObject {
     Q_OBJECT
@@ -68,7 +68,7 @@ public:
 class VersionList : public QObject {
     Q_OBJECT
     Q_PROPERTY(int size READ size)
-    Q_PROPERTY(VersionInfo* latestDownloadedVersion READ latestDownloadedVersion)
+    Q_PROPERTY(VersionInfo* latestInstalledVersion READ latestInstalledVersion)
 
 private:
     QMap<int, VersionInfo*>& m_versions;
@@ -78,7 +78,7 @@ public:
 
     int size() const { return m_versions.size(); }
 
-    VersionInfo* latestDownloadedVersion() const;
+    VersionInfo* latestInstalledVersion() const;
 
 public slots:
     QList<QObject*> getAll() const {
@@ -115,13 +115,11 @@ public slots:
 class VersionManager : public QObject {
     Q_OBJECT
     Q_PROPERTY(VersionList* versions READ versionList NOTIFY versionListChanged)
-    Q_PROPERTY(ArchivalVersionList* archivalVersions READ archivalVersionList NOTIFY archivalVersionListChanged)
 
 private:
     QString baseDir;
     QMap<int, VersionInfo*> m_versions;
     VersionList m_versionList;
-    ArchivalVersionList m_archival;
 
     void loadVersions();
     void saveVersions();
@@ -138,11 +136,7 @@ public:
 
     void addVersion(QString directory, QString versionName, int versionCode);
 
-    int latestDownloadedVersion() const;
-
     VersionList* versionList() { return &m_versionList; }
-
-    ArchivalVersionList* archivalVersionList() { return &m_archival; }
 
 public slots:
     QString getDirectoryFor(QString const& versionName);
@@ -153,18 +147,12 @@ public slots:
 
     void removeVersion(VersionInfo* version, QStringList abis);
 
-    void downloadLists(QStringList abis, QString baseUrl) {
-        m_archival.downloadLists(abis, baseUrl);
-    }
-
     bool checkSupport(QString const& versionName);
 
     bool checkSupport(VersionInfo *version);
     
 signals:
     void versionListChanged();
-
-    void archivalVersionListChanged();
 
 };
 

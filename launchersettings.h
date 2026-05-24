@@ -15,12 +15,10 @@ class LauncherSettings : public QObject {
     Q_PROPERTY(bool startHideLauncher READ startHideLauncher WRITE setStartHideLauncher NOTIFY settingsChanged)
     Q_PROPERTY(bool startOpenLog READ startOpenLog WRITE setStartOpenLog NOTIFY settingsChanged)
     Q_PROPERTY(bool disableGameLog READ disableGameLog WRITE setDisableGameLog NOTIFY settingsChanged)
-    Q_PROPERTY(bool checkForUpdates READ checkForUpdates WRITE setCheckForUpdates NOTIFY settingsChanged)
     Q_PROPERTY(bool showExitButton READ showExitButton WRITE setShowExitButton NOTIFY settingsChanged)
     Q_PROPERTY(bool showUnverified READ showUnverified WRITE setShowUnverified NOTIFY settingsChanged)
     Q_PROPERTY(bool showUnsupported READ showUnsupported WRITE setShowUnsupported NOTIFY settingsChanged)
     Q_PROPERTY(bool showBetaVersions READ showBetaVersions WRITE setShowBetaVersions NOTIFY settingsChanged)
-    Q_PROPERTY(bool downloadOnly READ downloadOnly WRITE setDownloadOnly NOTIFY settingsChanged)
     Q_PROPERTY(QString singleArch READ singleArch WRITE setSingleArch NOTIFY settingsChanged)
     Q_PROPERTY(long long lastVersion READ lastVersion WRITE setLastVersion NOTIFY settingsChanged)
     Q_PROPERTY(QUrl gameDataDir READ gameDataDir)
@@ -48,9 +46,6 @@ public:
     bool disableGameLog() const { return settings.value("disableGameLog", false).toBool(); }
     void setDisableGameLog(bool value) { settings.setValue("disableGameLog", value); emit settingsChanged(); }
 
-    bool checkForUpdates() const { return settings.value("checkForUpdates", true).toBool(); }
-    void setCheckForUpdates(bool value) { settings.setValue("checkForUpdates", value); emit settingsChanged(); }
-
     bool showExitButton() const { return settings.value("showExitButton", false).toBool(); }
     void setShowExitButton(bool value) { settings.setValue("showExitButton", value); emit settingsChanged(); }
 
@@ -59,9 +54,6 @@ public:
 
     bool showUnsupported() const { return !disableDevMode && !singleArch().isEmpty(); }
     void setShowUnsupported(bool value) { settings.setValue("showUnsupported", value); emit settingsChanged(); }
-
-    bool downloadOnly() const { return false; }
-    void setDownloadOnly(bool value) { emit settingsChanged(); }
 
     QString singleArch() const { return !disableDevMode ? settings.value("singleArch", "").toString() : ""; }
     void setSingleArch(QString value) { settings.setValue("singleArch", value); emit settingsChanged(); }

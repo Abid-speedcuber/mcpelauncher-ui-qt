@@ -34,11 +34,7 @@ std::size_t AndroidAbiComparer::operator()(const std::string &a) const {
     return std::hash<std::string>()(a);
 }
 
-#if defined(__i386__) || defined(__x86_64__)
-#include "cpuid.h"
-#endif
 #include <sstream>
-#include <vector>
 
 #ifndef __APPLE__
 bool Supports32Bit() {
@@ -50,70 +46,28 @@ bool Supports32Bit() {
 std::map<std::string, SupportReport, AndroidAbiComparer> SupportedAndroidAbis::getAbis() {
     std::map<std::string, SupportReport, AndroidAbiComparer> abis = { };
 #if defined(__i386__) || defined(__x86_64__)
-    CpuId cpuid;
-    bool hasssse3 = cpuid.queryFeatureFlag(CpuId::FeatureFlag::SSSE3);
-    bool hassse41 = cpuid.queryFeatureFlag(CpuId::FeatureFlag::SSE41);
-    bool hassse42 = cpuid.queryFeatureFlag(CpuId::FeatureFlag::SSE42);
-    bool haspopcnt = cpuid.queryFeatureFlag(CpuId::FeatureFlag::POPCNT);
-    if (hasssse3 && hassse41 && hassse42 && haspopcnt) {
 #if !defined(DISABLE_64BIT) && !defined(__i386__)
-        abis["x86_64"] = { .compatible = true, .launchername = "mcpelauncher-client" };
+    abis["x86_64"] = { .compatible = true, .launchername = "mcpelauncher-client" };
 #else
-        abis["x86_64"] = { .compatible = false, .launchername = "mcpelauncher-client-x86_64", .details = QObject::tr("Disabled in this Launcher Release, please download a different distribution").toStdString() };
+    abis["x86_64"] = { .compatible = false, .launchername = "mcpelauncher-client-x86_64", .details = QObject::tr("Disabled in this launcher build").toStdString() };
 #endif
-    } else {
-        std::stringstream error;
-        error << QObject::tr("Your Computer is to old for running Android x86_64 64bit Games").toStdString() << "<br/>";
-#if defined(DISABLE_64BIT) || defined(__i386__)
-        error << QObject::tr("Disabled in this Launcher Release, please download a different distribution").toStdString() << "<br/>";
-#endif
-        error << QObject::tr("Android expect the following unavailable Instruction Sets to be available:").toStdString() << "<br/>";
-        std::vector<std::string> missing;
-        if (!hasssse3) {
-            missing.push_back("SSSE3");
-        }
-        if (!hassse41) {
-            missing.push_back("SSE4.1");
-        }
-        if (!hassse42) {
-            missing.push_back("SSE4.2");
-        }
-        if (!haspopcnt) {
-            missing.push_back("POPCNT");
-        }
-        for (size_t i = 0; i < missing.size(); i++) {
-            if (i) {
-                error << ", ";
-            }
-            error << missing[i];
-        }
-        abis["x86_64"] = { .compatible = false, .launchername = "mcpelauncher-client", .details = error.str() };
-    }
     auto&& x86 = abis["x86"];
     x86.launchername = "mcpelauncher-client"
 #if !defined(DISABLE_64BIT) && !defined(__i386__)
         "32"
 #endif
     ;
-    if (hasssse3 && Supports32Bit()) {
+    if (Supports32Bit()) {
 #if !defined(DISABLE_32BIT)
         x86.compatible = true;
 #else
         x86.compatible = false;
-        x86.details = QObject::tr("Disabled in this Launcher Release, please download a different distribution").toStdString();
+        x86.details = QObject::tr("Disabled in this launcher build").toStdString();
 #endif
     } else {
         std::stringstream error;
         if (!Supports32Bit()) {
             x86.details = QObject::tr("Your Operating System doesn't support (old) x86 32bit games").toStdString();
-        }
-        if(!hasssse3) {
-            error << QObject::tr("Your Computer is to old for running Android x86 32bit Games").toStdString() << "<br/>";
-#ifdef DISABLE_32BIT
-            error << "Disabled in this Launcher Release, please download a different distribution<br/>";
-#endif
-            error << QObject::tr("Android expect the following unavailable Instruction Sets to be available:").toStdString() << "<br/>";
-            error << "SSSE3<br/>";
         }
         x86.compatible = false;
         x86.details = error.str();
@@ -147,7 +101,7 @@ std::map<std::string, SupportReport, AndroidAbiComparer> SupportedAndroidAbis::g
         arm.compatible = true;
 #else
         arm.compatible = false;
-        arm.details = QObject::tr("Disabled in this Launcher Release, please download a different distribution").toStdString();
+        arm.details = QObject::tr("Disabled in this launcher build").toStdString();
 #endif
 #endif
     return abis;

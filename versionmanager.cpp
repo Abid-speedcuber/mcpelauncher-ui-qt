@@ -9,7 +9,7 @@
 #define LAUNCHER_VERSIONDB_URL "https://raw.githubusercontent.com/minecraft-linux/mcpelauncher-versiondb/master"
 #endif
 
-VersionManager::VersionManager() : m_versionList(m_versions), m_archival(LAUNCHER_VERSIONDB_URL) {
+VersionManager::VersionManager() : m_versionList(m_versions) {
     baseDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("mcpelauncher/versions");
     QDir().mkpath(baseDir);
     loadVersions();
@@ -169,7 +169,7 @@ bool VersionManager::checkSupport(QString const& directory) {
     return false;
 }
 
-VersionInfo* VersionList::latestDownloadedVersion() const {
+VersionInfo* VersionList::latestInstalledVersion() const {
     if (m_versions.empty())
         return nullptr;
     return m_versions.last();

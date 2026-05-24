@@ -8,6 +8,7 @@ import "Components"
 
 Window {
     property VersionManager versionManager
+    signal importFinished
 
     id: root
     width: 320
@@ -41,6 +42,7 @@ Window {
         versionManager: root.versionManager
         progressBar: apkExtractionProgressBar
         allowIncompatible: root.allowIncompatible
+        onFinished: root.importFinished()
     }
 
     function pickFile() {

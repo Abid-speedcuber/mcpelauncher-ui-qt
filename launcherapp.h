@@ -24,7 +24,7 @@ class LauncherApp : public QApplication {
 public:
     LauncherApp(int &argc, char **argv);
 
-    int launchProfileFile(QString profileName, QString filePath, bool startEventLoop = true);
+    int launchFile(QString filePath, bool startEventLoop = true);
 
 public slots:
     void setVisibleInDock(bool visible);

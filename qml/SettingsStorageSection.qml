@@ -55,11 +55,6 @@ ColumnLayout {
         Layout.topMargin: 10
     }
 
-    MText {
-        text: qsTr("Game directories for current selected profile: ") + profileManagerInstance.activeProfile.name
-        Layout.bottomMargin: 5
-    }
-
     Repeater {
         property string gameDataDir: window.getCurrentGameDataDir()
         model: [{

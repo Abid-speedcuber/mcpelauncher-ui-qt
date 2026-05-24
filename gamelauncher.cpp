@@ -1,11 +1,11 @@
 #include "gamelauncher.h"
-#include "profilemanager.h"
 #include "EnvPathUtil.h"
 #include <QFile>
+#include <QFileInfo>
 #include <QDir>
+#include <QProcessEnvironment>
 #include "supportedandroidabis.h"
 #include <sstream>
-#include <modmanager.h>
 
 GameLauncher::GameLauncher(QObject *parent) : QObject(parent) {
 }
@@ -19,6 +19,8 @@ std::string GameLauncher::findLauncher(std::string name) {
 #endif
     if (EnvPathUtil::findInPath(name, path))
         return path;
+    if (name == "mcpelauncher-client" && QFileInfo::exists("/usr/local/bin/mcpelauncher-client"))
+        return "/usr/local/bin/mcpelauncher-client";
     return std::string();
 }
 
@@ -29,8 +31,8 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
     m_disableGameLog = disableGameLog;
     process.reset(new QProcess);
     QStringList args;
-    QStringList cargs;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    
     if (m_gameDir.length() > 0) {
         args.append("-dg");
         args.append(m_gameDir);
@@ -42,111 +44,8 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
     if (!hasVerifiedLicense) {
         args.append("--free-only");
     }
-    if (m_profile != nullptr) {
-        if (m_profile->dataDirCustom) {
-            args.append("-dd");
-            args.append(m_profile->dataDir);
-        }
-        if (m_profile->windowCustomSize) {
-            args.append("-ww");
-            args.append(QString::number(m_profile->windowWidth));
-            args.append("-wh");
-            args.append(QString::number(m_profile->windowHeight));
-        }
-        if (m_profile->texturePatch != 0) {
-            args.append("-tp");
-            args.append(QString::number(m_profile->texturePatch == 1));
-        }
-        if(m_profile->mods.size()) {
-            ModManager manager;
-            args.append("-m");
-            QList<QString> mods;
-            for(const QString& mod : m_profile->mods) {
-                auto modInfo = manager.loadModInfoByPath(mod);
-                if(modInfo.name.isEmpty()) {
-                    mods.append(mod);
-                    continue;
-                }
-                mods.append(manager.getFolderPathForMod(modInfo.name, modInfo.version, modInfo.arch));
-            }
-            args.append(mods.join(','));
-        }
-#ifdef __APPLE__
-        if (m_profile->graphicsAPI == 1) {
-            env.insert("ANGLE_DEFAULT_PLATFORM", "metal");
-        }
-        if (m_profile->graphicsAPI == 2) {
-            env.insert("ANGLE_DEFAULT_PLATFORM", "gl");
-        }
-#endif
-        std::string commandline = m_profile->commandline.toStdString();
-        if(!commandline.empty()) {
-            char quote = '\0';
-            std::string arg;
-            for(size_t i = 0, length = commandline.length(); i < length; i++) {
-                auto&& cur = commandline[i];
-                switch (cur) {
-                case ' ':
-                case '\t':
-                case '\r':
-                case '\n':
-                    if(quote == '\0') {
-                        if(!arg.empty()) {
-                            cargs.append(QString::fromStdString(arg));
-                        }
-                        arg = "";
-                    } else {
-                        arg += cur;
-                    }
-                    break;
-                case '"':
-                case '\'':
-                    if(quote == '\0') {
-                        quote = cur;
-                    } else if(cur == quote) {
-                        quote = '\0';
-                    } else  {
-                        arg += cur;
-                    }
-                    break;
-                case '\\':
-                    i++;
-                    if(i < length) {
-                        cur = commandline[i];
-                        switch (cur) {
-                        case 'n':
-                            arg += '\n';
-                            break;
-                        case 'r':
-                            arg += '\r';
-                            break;
-                        case 't':
-                            arg += '\t';
-                            break;
-                        case '0':
-                            arg += '0';
-                            break;
-                        default:
-                            arg += cur;
-                            break;
-                        }
-                    }
-                    break;
-                default:
-                    arg += cur;
-                    break;
-                }
-            }
-            if(!arg.empty()) { 
-                cargs.append(QString::fromStdString(arg));
-            }
-        }
+    env.insert("PATH", "/usr/local/bin:/usr/bin:/bin:" + env.value("PATH"));
 
-        auto keys = m_profile->env->keys();
-        for (auto it = keys.constBegin(); it != keys.constEnd(); it++) {
-            env.insert(*it, m_profile->env->value(*it).toString());
-        }
-    }
     process->setProcessEnvironment(env);
     process->setProcessChannelMode(QProcess::MergedChannels);
     if (m_disableGameLog) {
@@ -157,6 +56,8 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
         #endif
     }
     emit logCleared();
+    emit logAppended(tr("Game directory: %1\n").arg(m_gameDir));
+    emit logAppended(tr("PATH: %1\n").arg(env.value("PATH")));
     
     logAttached();
     connect(process.data(), QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &GameLauncher::handleFinished);
@@ -167,32 +68,8 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
     std::string launcherpath;
     auto _arch = arch.toStdString();
 
-    int64_t hasCustomInterpreter = cargs.indexOf("%command%");
-    QString customExecutable = "";
-    if(hasCustomInterpreter != -1) {
-        customExecutable = cargs.front();
-        cargs.pop_front();
-        cargs.append(args);
-        args.clear();
-        hasCustomInterpreter--;
-    }
-    args.append(cargs);
-
     auto getCommandLine = [&](const QString& executable) {
         std::ostringstream commandline;
-        bool hasElement = false;
-        if(m_profile != nullptr && m_profile->env != nullptr) {
-            for(auto&& k : m_profile->env->keys()) {
-                if(hasElement) {
-                    commandline << " ";
-                }
-                commandline << "\"" << k.toStdString() << "=" << env.value(k).toStdString() << "\"";
-                hasElement = true;
-            }
-        }
-        if(hasElement) {
-            commandline << " ";
-        }
         commandline << "\"" << executable.toStdString() << "\"";
         for(auto&& v : args) {
             commandline << " \"" << v.toStdString() << "\"";
@@ -201,13 +78,12 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
     };
 
     for (auto&& abi : abis) {
-        if((_arch.empty() || _arch == abi.first) && QFile(m_gameDir + "/lib/" + QString::fromStdString(abi.first) + "/libminecraftpe.so").exists()) {
+        auto libPath = m_gameDir + "/lib/" + QString::fromStdString(abi.first) + "/libminecraftpe.so";
+        emit logAppended(tr("Checking ABI %1: %2\n").arg(QString::fromStdString(abi.first), QFile(libPath).exists() ? tr("found") : tr("missing")));
+        if((_arch.empty() || _arch == abi.first) && QFile(libPath).exists()) {
             if(!(launcherpath = findLauncher(abi.second.launchername)).empty()) {
                 auto executable = QString::fromStdString(launcherpath);
-                if(hasCustomInterpreter != -1) {
-                    args[hasCustomInterpreter] = executable;
-                    executable = customExecutable;
-                }
+                emit logAppended(tr("Using launcher: %1\n").arg(executable));
                 process->start(executable, args);
                 emit stateChanged();
                 emit logAppended(QString::fromStdString(getCommandLine(executable)) + "\n");
@@ -266,7 +142,7 @@ void GameLauncher::handleFinished(int exitCode, QProcess::ExitStatus exitStatus)
     switch (exitCode)
     {
     case 51: // Failed to load Minecraft lib
-        msg = tr("Incompatible Minecraft installation, please select a different or older Version\nThis Launcher is a free Open Source Software which usually fell behind official updates from Google Play\nIn some cases there are missing game files,\nmissing Symbols expected to be provided by this Launcher via updates\n or otherwise broke the Launcher");
+        msg = tr("Incompatible Minecraft installation. Please import a compatible APK and try again.");
         emit corruptedInstall();
         break;
     case 127: // Failed to load launcher dependencies (GNU/Linux)
@@ -290,13 +166,11 @@ void GameLauncher::handleFinished(int exitCode, QProcess::ExitStatus exitStatus)
 }
 
 void GameLauncher::handleError(QProcess::ProcessError error) {
-    if (error == QProcess::FailedToStart) {
-        m_crashed = true;
-        logAttached();
-        emit logAppended(tr("Your system is unable to execute the launcher"));
-        emit stateChanged();
-        launchFailed();
-    }
+    m_crashed = true;
+    logAttached();
+    emit logAppended(tr("Launcher process error %1: %2\n").arg(error).arg(process ? process->errorString() : QString()));
+    emit stateChanged();
+    launchFailed();
 }
 
 void GameLauncher::kill() {
