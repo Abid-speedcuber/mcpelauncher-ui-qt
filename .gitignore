@@ -73,3 +73,8 @@ CMakeLists.txt.user
 *.exe
 
 /build
+/build-*/
+/.flatpak-builder/
+/flatpak-build/
+/repo/
+/*.flatpak

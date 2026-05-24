@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Minecraft Bedrock Launcher
-Comment=A Minecraft: Bedrock Edition (earlier: Pocket Edition launcher)
+Name=Unofficial Bedrock APK Launcher
+Comment=Import a local Android APK and launch it with mcpelauncher
 Exec=mcpelauncher-ui-qt %U
-Icon=mcpelauncher-ui-qt
+Icon=io.github.Abid_speedcuber.mcpelauncher_minimal
 MimeType=application/zip
 Type=Application
 Categories=Game;

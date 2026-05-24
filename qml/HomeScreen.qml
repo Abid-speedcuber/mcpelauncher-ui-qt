@@ -19,7 +19,7 @@ BaseScreen {
     headerContent: RowLayout {
         anchors.fill: parent
         Text {
-            text: qsTr("Minecraft Launcher")
+            text: qsTr("Unofficial Bedrock APK Launcher")
             color: "white"
             font.pointSize: 14
             font.bold: true
@@ -34,7 +34,7 @@ BaseScreen {
         spacing: 10
 
         Text {
-            text: qsTr("Select a Game Version:")
+            text: qsTr("Select an imported game version:")
             color: "white"
             font.pointSize: 12
         }
@@ -135,6 +135,14 @@ BaseScreen {
                     }
                 }
             }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("Unofficial GPLv3 fork of mcpelauncher-ui-qt. Not affiliated with Mojang or Microsoft. No game files are included.")
+            color: "#b8b8b8"
+            font.pointSize: 9
+            wrapMode: Text.WordWrap
         }
     }
 

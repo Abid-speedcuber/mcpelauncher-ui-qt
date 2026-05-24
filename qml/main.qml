@@ -9,7 +9,7 @@ Window {
     visible: true
     width: 800
     height: 600
-    title: qsTr("Minecraft Launcher")
+    title: qsTr("Unofficial Bedrock APK Launcher")
     color: "#333333"
     property string currentGameDataDir: ""
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.16)
 
 project(mcpelauncher-ui-qt LANGUAGES CXX)
 
@@ -20,7 +20,7 @@ if(NOT TARGET zlib)
     add_library(zlib ALIAS ZLIB::ZLIB)
 endif()
 
-set(MCPELAUNCHER_ROOT "/home/abid/mcpe" CACHE PATH "Path to the mcpelauncher source tree")
+set(MCPELAUNCHER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party" CACHE PATH "Path to the mcpelauncher dependency source tree")
 if(EXISTS "${MCPELAUNCHER_ROOT}/axml-parser/CMakeLists.txt" AND NOT TARGET axml_parser)
     add_subdirectory("${MCPELAUNCHER_ROOT}/axml-parser" "${CMAKE_CURRENT_BINARY_DIR}/deps/axml-parser" EXCLUDE_FROM_ALL)
 endif()
@@ -88,8 +88,11 @@ target_link_libraries(${PROJECT_NAME} Qt6::Core Qt6::Quick Qt6::Widgets Qt6::Svg
 
 install(TARGETS mcpelauncher-ui-qt RUNTIME COMPONENT mcpelauncher-ui-qt DESTINATION bin)
 if (NOT APPLE)
-    install(FILES mcpelauncher-ui-qt.desktop COMPONENT mcpelauncher-ui-qt DESTINATION share/applications)
-    install(FILES Resources/mcpelauncher-icon.svg RENAME mcpelauncher-ui-qt.svg
-            COMPONENT mcpelauncher-ui-qt DESTINATION share/pixmaps)
+    install(FILES mcpelauncher-ui-qt.desktop RENAME io.github.Abid_speedcuber.mcpelauncher_minimal.desktop
+            COMPONENT mcpelauncher-ui-qt DESTINATION share/applications)
+    install(FILES packaging/io.github.Abid_speedcuber.mcpelauncher_minimal.metainfo.xml
+            COMPONENT mcpelauncher-ui-qt DESTINATION share/metainfo)
+    install(FILES Resources/mcpelauncher-icon.svg RENAME io.github.Abid_speedcuber.mcpelauncher_minimal.svg
+            COMPONENT mcpelauncher-ui-qt DESTINATION share/icons/hicolor/scalable/apps)
 endif()
 include(CPackSettings.cmake)

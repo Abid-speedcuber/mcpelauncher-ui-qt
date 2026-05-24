@@ -16,7 +16,7 @@ ColumnLayout {
     BaseHeader {
         id: baseHeader
         Layout.fillWidth: true
-        title: qsTr("Unofficial *nix launcher for Minecraft")
+        title: qsTr("Unofficial Bedrock APK Launcher")
         subtitle: LAUNCHER_VERSION_NAME ? qsTr("%1 (build %2)").arg(LAUNCHER_VERSION_NAME).arg((LAUNCHER_VERSION_CODE || "Unknown").toString()) : ""
     }
 }

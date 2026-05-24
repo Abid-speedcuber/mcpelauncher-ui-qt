@@ -1,0 +1,15 @@
+[submodule "third_party/axml-parser"]
+	path = third_party/axml-parser
+	url = https://github.com/MCMrARM/axml-parser
+[submodule "third_party/mcpelauncher-extract"]
+	path = third_party/mcpelauncher-extract
+	url = https://github.com/minecraft-linux/mcpelauncher-extract.git
+[submodule "third_party/mcpelauncher-common"]
+	path = third_party/mcpelauncher-common
+	url = https://github.com/minecraft-linux/mcpelauncher-common.git
+[submodule "third_party/mcpelauncher-apkinfo"]
+	path = third_party/mcpelauncher-apkinfo
+	url = https://github.com/minecraft-linux/mcpelauncher-apkinfo
+[submodule "third_party/file-util"]
+	path = third_party/file-util
+	url = https://github.com/minecraft-linux/file-util.git

@@ -23,7 +23,7 @@ Item {
 
     FileDialog {
         id: apkPicker
-        title: "Please pick the Minecraft .apk file"
+        title: "Please pick a legally obtained Android APK"
         nameFilters: ["Android package files (*.apk *.zip)", "All files (*)"]
         fileMode: FileDialog.OpenFiles
 

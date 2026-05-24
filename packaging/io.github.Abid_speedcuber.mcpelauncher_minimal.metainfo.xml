@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.Abid_speedcuber.mcpelauncher_minimal</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>Unofficial Bedrock APK Launcher</name>
+  <developer id="io.github.abidspeedcuber">
+    <name>Abid-speedcuber</name>
+  </developer>
+  <summary>Import a local Android APK and launch it with mcpelauncher</summary>
+  <description>
+    <p>
+      Unofficial GPLv3 fork of mcpelauncher-ui-qt focused only on local APK
+      import and launching.
+    </p>
+    <p>
+      This app does not include Minecraft, APKs, extracted game libraries, game
+      assets, or Mojang/Microsoft files. Users must provide their own legally
+      obtained APK.
+    </p>
+    <p>
+      This project is not affiliated with Mojang, Microsoft, Google, or the
+      upstream mcpelauncher maintainers.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.Abid_speedcuber.mcpelauncher_minimal.desktop</launchable>
+  <url type="homepage">https://github.com/Abid-speedcuber/mcpelauncher-ui-qt</url>
+  <url type="vcs-browser">https://github.com/Abid-speedcuber/mcpelauncher-ui-qt</url>
+  <url type="bugtracker">https://github.com/Abid-speedcuber/mcpelauncher-ui-qt/issues</url>
+  <provides>
+    <binary>mcpelauncher-ui-qt</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+</component>
