@@ -40,37 +40,9 @@ endif()
 option(LAUNCHER_DISABLE_DEV_MODE "Disables the dev tab by default" ON)
 option(LAUNCHER_MACOS_HAVE_ARMLAUNCHER "Enables use of the arm launcher" ON)
 
-find_package(Qt6LinguistTools)
-set(LAUNCHER_LINGUIST_RESOURCES "")
-if (Qt6LinguistTools_FOUND)
-    file(GLOB TS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.ts")
-    if(UPDATE_TRANSLATIONS)
-        qt6_create_translation(QM_FILES ${CMAKE_CURRENT_SOURCE_DIR} ${TS_FILES})
-    else()
-        qt6_add_translation(QM_FILES ${TS_FILES})
-    endif()
-    # Generate a .qrc file dynamically
-    set(QRC_FILE "${CMAKE_CURRENT_BINARY_DIR}/translations.qrc")
-
-    file(WRITE  ${QRC_FILE} "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-    file(APPEND ${QRC_FILE} "<RCC>\n")
-    file(APPEND ${QRC_FILE} "  <qresource prefix=\"/translations\">\n")
-    foreach(TS_FILE IN LISTS QM_FILES)
-        # Extract just the filename (basename)
-        get_filename_component(TS_BASENAME "${TS_FILE}" NAME)
-        file(APPEND ${QRC_FILE} "    <file>${TS_BASENAME}</file>\n")
-    endforeach()
-    file(APPEND ${QRC_FILE} "  </qresource>\n")
-    file(APPEND ${QRC_FILE} "</RCC>\n")
-    set(LAUNCHER_LINGUIST_RESOURCES ${QRC_FILE} ${QM_FILES})
-endif()
-
 qt6_add_resources(RESOURCES qml.qrc)
-set(RESOURCES ${RESOURCES} ${LAUNCHER_LINGUIST_RESOURCES})
 
-
-
-add_executable(${PROJECT_NAME} main.cpp launcherapp.cpp launcherapp.h versionmanager.cpp versionmanager.h apkextractiontask.cpp apkextractiontask.h zipextractiontask.cpp zipextractiontask.h gamelauncher.cpp gamelauncher.h qmlurlutils.h launchersettings.h supportedandroidabis.cpp supportedandroidabis.h ${RESOURCES})
+add_executable(${PROJECT_NAME} main.cpp launcherapp.cpp launcherapp.h versionmanager.cpp versionmanager.h apkextractiontask.cpp apkextractiontask.h zipextractiontask.cpp zipextractiontask.h packimporttask.cpp packimporttask.h gamelauncher.cpp gamelauncher.h qmlurlutils.h launchersettings.h supportedandroidabis.cpp supportedandroidabis.h ${RESOURCES})
 
 if(LAUNCHER_DISABLE_DEV_MODE)
     target_compile_definitions(${PROJECT_NAME} PUBLIC LAUNCHER_DISABLE_DEV_MODE)

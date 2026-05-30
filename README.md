@@ -95,6 +95,55 @@ cd mcpelauncher-ui-qt
 
 The bundle is written to `unofficial-bedrock-apk-launcher.flatpak`.
 
+## Updating Installed Releases
+
+A standalone `.flatpak` bundle from GitHub Releases can be installed again over
+an existing install as long as the app ID stays the same:
+
+```sh
+flatpak install --user ./unofficial-bedrock-apk-launcher.flatpak
+```
+
+That replaces the installed app, but it is still a manual update flow. For a
+proper update channel, publish a Flatpak repository instead of only release
+assets: build each release, run `flatpak build-update-repo repo`, host the
+`repo/` directory over HTTPS, and give users a `.flatpakrepo` file. After that,
+users install once from your remote and receive future builds with:
+
+```sh
+flatpak update io.github.Abid_speedcuber.mcpelauncher_minimal
+```
+
+Keep the app ID stable between releases; changing it makes Flatpak treat the
+next build as a different application.
+
+This repo includes a GitHub Pages helper for that flow:
+
+```sh
+./scripts/build-flatpak-bundle.sh
+./scripts/publish-flatpak-repo-gh-pages.sh
+```
+
+That publishes `repo/` and `mcpelauncher-minimal.flatpakrepo` to the `gh-pages`
+branch. Enable GitHub Pages for that branch in the repository settings, then
+users can add the remote with:
+
+```sh
+flatpak remote-add --user --if-not-exists mcpelauncher-minimal https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher-minimal.flatpakrepo
+flatpak install --user mcpelauncher-minimal io.github.Abid_speedcuber.mcpelauncher_minimal
+```
+
+For a tagged public release with both update repo publishing and GitHub Release
+assets, commit your changes and run:
+
+```sh
+./scripts/release.sh v1.2.3
+```
+
+That script builds `unofficial-bedrock-apk-launcher.flatpak`, publishes the
+Flatpak update repo to `gh-pages`, tags the source, and uploads the bundle plus
+`.flatpakrepo` file to GitHub Releases.
+
 ## Linux Mint / Ubuntu Host Build
 
 This is useful for development, but the Flatpak bundle above is the recommended

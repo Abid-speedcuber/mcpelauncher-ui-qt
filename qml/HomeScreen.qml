@@ -13,8 +13,9 @@ BaseScreen {
     property var launcher
     property var logModel
     property var selectedVersion: null
+    property string gameDataDir: ""
 
-    signal gameLaunchRequested()
+    signal gameLogRequested()
 
     headerContent: RowLayout {
         anchors.fill: parent
@@ -54,20 +55,53 @@ BaseScreen {
 
                 delegate: Rectangle {
                     property var versionInfo: modelData
+                    property bool dragHover: false
 
                     width: versionList.width
                     height: 60
-                    color: homeScreen.selectedVersion === versionInfo ? "#24513a" : (index % 2 === 0 ? "#333333" : "#3a3a3a")
+                    color: dragHover ? "#364e63" : (homeScreen.selectedVersion === versionInfo ? "#24513a" : (index % 2 === 0 ? "#333333" : "#3a3a3a"))
                     radius: 3
-                    border.color: homeScreen.selectedVersion === versionInfo ? "#5fc48b" : (mouseArea.containsMouse ? "#555555" : "transparent")
+                    border.color: dragHover ? "#78bde8" : (homeScreen.selectedVersion === versionInfo ? "#5fc48b" : (mouseArea.containsMouse ? "#555555" : "transparent"))
+
+                    DropArea {
+                        anchors.fill: parent
+                        keys: ["text/uri-list"]
+                        onEntered: {
+                            dragHover = true
+                            versionList.currentIndex = index
+                            homeScreen.selectedVersion = versionInfo
+                        }
+                        onExited: dragHover = false
+                        onDropped: function (drop) {
+                            dragHover = false
+                            versionList.currentIndex = index
+                            homeScreen.selectedVersion = versionInfo
+                            if (drop.hasUrls) {
+                                packImportWindow.importUrls(drop.urls)
+                                drop.acceptProposedAction()
+                            }
+                        }
+                    }
 
                     MouseArea {
                         id: mouseArea
                         anchors.fill: parent
                         hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onClicked: {
                             versionList.currentIndex = index
                             homeScreen.selectedVersion = versionInfo
+                            if (mouse.button === Qt.RightButton) {
+                                versionContextMenu.popup()
+                            }
+                        }
+                    }
+
+                    Menu {
+                        id: versionContextMenu
+                        MenuItem {
+                            text: qsTr("Import packs...")
+                            onTriggered: packImportWindow.pickFiles()
                         }
                     }
 
@@ -114,13 +148,25 @@ BaseScreen {
             }
 
             Button {
-                text: qsTr("Play")
+                text: qsTr("Import Packs")
                 Layout.fillWidth: true
-                enabled: homeScreen.selectedVersion !== null
+                onClicked: packImportWindow.pickFiles()
+            }
+
+            Button {
+                text: qsTr("Game Log")
+                Layout.fillWidth: true
+                enabled: launcher.running || launcher.crashed || (logModel && logModel.count > 0)
+                onClicked: homeScreen.gameLogRequested()
+            }
+
+            Button {
+                text: launcher.running ? qsTr("Running") : qsTr("Play")
+                Layout.fillWidth: true
+                enabled: homeScreen.selectedVersion !== null && !launcher.running
                 onClicked: {
                     if (homeScreen.selectedVersion) {
                         var gameDir = versionManager.getDirectoryFor(homeScreen.selectedVersion)
-                        homeScreen.gameLaunchRequested()
                         if (logModel) {
                             logModel.clear()
                             logModel.append({ "display": "Launching " + homeScreen.selectedVersion.versionName })
@@ -131,7 +177,6 @@ BaseScreen {
                             logModel.append({ "display": "Starting launcher process..." })
                         }
                         launcher.start(false, "", true, "")
-                        application.setVisibleInDock(false)
                     }
                 }
             }
@@ -154,5 +199,10 @@ BaseScreen {
             versionList.currentIndex = -1
             versionList.model = versionManager.versions.getAll()
         }
+    }
+
+    PackImportWindow {
+        id: packImportWindow
+        gameDataDir: homeScreen.gameDataDir
     }
 }

@@ -10,10 +10,12 @@ finish-args:
   - --socket=fallback-x11
   - --socket=wayland
   - --socket=pulseaudio
+  - --talk-name=org.freedesktop.portal.Desktop
   - --device=all
   - --share=ipc
   - --filesystem=home
   - --env=ALSA_CONFIG_PATH=
+  - --env=BROWSER=xdg-open
   - --env=QT_QUICK_CONTROLS_HOVER_ENABLED=1
   - --env=QML_DISABLE_DISK_CACHE=1
 modules:
@@ -63,7 +65,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/minecraft-linux/mcpelauncher-manifest.git
-        commit: 06d038a3159c5667b5a63786fe22bba5214ec76a
+        commit: 7938a9d77b5dab83365754672d57d19bf91c3c9b
         disable-shallow-clone: true
       - type: git
         url: https://github.com/gabomdq/SDL_GameControllerDB

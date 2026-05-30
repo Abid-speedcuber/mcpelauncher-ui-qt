@@ -45,6 +45,9 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
         args.append("--free-only");
     }
     env.insert("PATH", "/usr/local/bin:/usr/bin:/bin:" + env.value("PATH"));
+    if (env.value("BROWSER").isEmpty()) {
+        env.insert("BROWSER", "xdg-open");
+    }
 
     process->setProcessEnvironment(env);
     process->setProcessChannelMode(QProcess::MergedChannels);

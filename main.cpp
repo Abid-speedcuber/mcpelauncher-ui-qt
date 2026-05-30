@@ -9,8 +9,8 @@
 #include "launchersettings.h"
 #include "launcherapp.h"
 #include "zipextractiontask.h"
+#include "packimporttask.h"
 
-#include <QTranslator>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QObject>
@@ -34,15 +34,6 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("Minecraft Linux Launcher UI");
 
     LauncherApp app(argc, argv);
-    QTranslator translator;
-    if (translator.load(QLocale(), QLatin1String("mcpelauncher"), QLatin1String("_"), QLatin1String(":/translations"))) {
-        app.installTranslator(&translator);
-    }
-#ifndef NDEBUG
-    else {
-        qDebug() << "cannot load translator " << QLocale().name() << " check content of translations.qrc";
-    }
-#endif
 
     QCommandLineParser parser;
     parser.setApplicationDescription("Minecraft Linux Launcher UI");
@@ -80,6 +71,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<LauncherSettings>("io.mrarm.mcpelauncher", 1, 0, "LauncherSettings");
     qmlRegisterSingletonType<QmlUrlUtils>("io.mrarm.mcpelauncher", 1, 0, "QmlUrlUtils", &QmlUrlUtils::createInstance);
     qmlRegisterType<ZipExtractionTask>("io.mrarm.mcpelauncher", 1, 0, "ZipExtractionTask");
+    qmlRegisterType<PackImportTask>("io.mrarm.mcpelauncher", 1, 0, "PackImportTask");
     QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).mkpath("mcpelauncher/background_art");
 
     QQmlApplicationEngine engine;

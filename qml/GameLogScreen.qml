@@ -10,10 +10,21 @@ ColumnLayout {
     spacing: 0
     property var launcher: null
     property var logModel: null
+    signal backRequested()
 
     BaseHeader {
         title: qsTr("Game Log")
         MButton {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: copyButton.left
+            anchors.rightMargin: 8
+            height: 34
+            width: 70
+            text: qsTr("Back")
+            onClicked: layout.backRequested()
+        }
+        MButton {
+            id: copyButton
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
             anchors.rightMargin: 10

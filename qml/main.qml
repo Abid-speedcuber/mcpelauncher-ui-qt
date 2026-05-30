@@ -36,7 +36,8 @@ Window {
             versionManager: versionManagerInstance
             launcher: gameLauncher
             logModel: gameLog
-            onGameLaunchRequested: stackView.push(panelGameLog)
+            gameDataDir: QmlUrlUtils.urlToLocalFile(launcherSettings.gameDataDir)
+            onGameLogRequested: stackView.push(panelGameLog)
         }
     }
 
@@ -45,6 +46,7 @@ Window {
         GameLogScreen {
             launcher: gameLauncher
             logModel: gameLog
+            onBackRequested: stackView.pop()
         }
     }
 

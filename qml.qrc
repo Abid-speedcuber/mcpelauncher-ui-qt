@@ -3,6 +3,7 @@
         <file>qml/main.qml</file>
         <file>qml/ApkImportWindow.qml</file>
         <file>qml/ApkImportHelper.qml</file>
+        <file>qml/PackImportWindow.qml</file>
         <file>qml/BaseScreen.qml</file>
         <file>qml/ErrorScreen.qml</file>
         <file>qml/HomeScreen.qml</file>

@@ -1,0 +1,8 @@
+[Flatpak Repo]
+Title=Unofficial Bedrock APK Launcher
+Name=mcpelauncher-minimal
+Url=https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/repo/
+Homepage=https://github.com/Abid-speedcuber/mcpelauncher-ui-qt
+Comment=Unofficial local APK import and launch UI for mcpelauncher
+DefaultBranch=master
+SuggestRemoteName=mcpelauncher-minimal
