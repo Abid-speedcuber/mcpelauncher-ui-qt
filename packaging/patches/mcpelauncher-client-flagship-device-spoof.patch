@@ -1,0 +1,211 @@
+--- a/libc-shim/src/common.cpp
++++ b/libc-shim/src/common.cpp
+@@ -812,7 +812,6 @@
+         {"pwrite", WithErrnoUpdate(pwrite)},
+         {"__system_property_foreach", (void*)stub},
+         {"fputwc", (void*)stub},
+-        {"__system_property_read", (void*)stub},
+         {"abs", (void*)stub},
+         {"utimes", (void*)stub},
+         {"__strrchr_chk", (void*)stub},
+--- a/libc-shim/src/system_properties.cpp
++++ b/libc-shim/src/system_properties.cpp
+@@ -3,24 +3,84 @@
+ 
+ #include <unistd.h>
+ #include <stdexcept>
++#include <cstring>
++
++static const char* getSpoofedSystemProperty(const char* name) {
++    if(!name)
++        return nullptr;
++    struct Property {
++        const char* name;
++        const char* value;
++    };
++    static const Property props[] = {
++        {"ro.product.manufacturer", "samsung"},
++        {"ro.product.brand", "samsung"},
++        {"ro.product.model", "SM-S928B"},
++        {"ro.product.device", "e3q"},
++        {"ro.product.name", "e3qxxx"},
++        {"ro.product.board", "pineapple"},
++        {"ro.hardware", "qcom"},
++        {"ro.hardware.egl", "adreno"},
++        {"ro.board.platform", "pineapple"},
++        {"ro.soc.manufacturer", "Qualcomm"},
++        {"ro.soc.model", "SM8650"},
++        {"ro.opengles.version", "196610"},
++        {"ro.build.version.sdk", "35"},
++        {"ro.build.version.release", "15"},
++        {"ro.build.version.codename", "REL"},
++        {"ro.build.characteristics", "phone"},
++        {"ro.product.cpu.abi", "x86_64"},
++        {"ro.product.cpu.abilist", "x86_64,x86,arm64-v8a,armeabi-v7a"},
++        {"ro.build.fingerprint", "samsung/e3q/e3q:15/AP3A/release-keys"},
++        {"debug.hwui.renderer", "skiagl"},
++    };
++    for(const auto& prop : props) {
++        if(std::strcmp(name, prop.name) == 0)
++            return prop.value;
++    }
++    return nullptr;
++}
+ 
+ void shim::add_system_properties_shimmed_symbols(std::vector<shim::shimmed_symbol> &list) {
+     list.push_back({"__system_property_find", __system_property_find});
+     list.push_back({"__system_property_get", __system_property_get});
++    list.push_back({"__system_property_read", (void*)__system_property_read});
+     list.push_back({"__system_property_read_callback", __system_property_read_callback});
+ }
+ 
+ const prop_info* shim::__system_property_find(const char *name) {
+-    return 0;
++    if(getSpoofedSystemProperty(name))
++        return reinterpret_cast<const prop_info*>(name);
++    return nullptr;
+ }
+ 
+ int shim::__system_property_get(const char *name, char *value) {
+-    value[0] = 0;
++    auto prop = getSpoofedSystemProperty(name);
++    if(prop) {
++        std::strcpy(value, prop);
++        return std::strlen(prop);
++    }
++    if(value)
++        value[0] = 0;
+     return 0;
+ }
+ 
++int shim::__system_property_read(const prop_info *pi, char *name, char *value) {
++    auto propName = reinterpret_cast<const char*>(pi);
++    auto prop = getSpoofedSystemProperty(propName);
++    if(!prop)
++        return 0;
++    if(name)
++        std::strcpy(name, propName);
++    if(value)
++        std::strcpy(value, prop);
++    return std::strlen(prop);
++}
++
+ void shim::__system_property_read_callback(const prop_info *pi, void (*callback)(void *cookie, const char *name, const char *value, uint32_t serial), void *cookie) {
+     if(callback) {
+-        callback(cookie, "", "", 0);
++        auto propName = reinterpret_cast<const char*>(pi);
++        auto prop = getSpoofedSystemProperty(propName);
++        callback(cookie, propName ? propName : "", prop ? prop : "", 0);
+     }
+ }
+--- a/libc-shim/src/system_properties.h
++++ b/libc-shim/src/system_properties.h
+@@ -7,6 +7,7 @@
+ namespace shim {
+     const prop_info *__system_property_find(const char *name);
+     int __system_property_get(const char *name, char *value);
++    int __system_property_read(const prop_info *pi, char *name, char *value);
+     void __system_property_read_callback(const prop_info* pi, void (* callback)(void* cookie, const char* name, const char* value, uint32_t serial), void* cookie);
+ 
+     void add_system_properties_shimmed_symbols(std::vector<shimmed_symbol> &list);
+--- a/mcpelauncher-client/src/armhf_support.cpp
++++ b/mcpelauncher-client/src/armhf_support.cpp
+@@ -21,7 +21,27 @@
+     
+ };
+ 
++static const GLubyte* (*realGlGetString)(GLenum) = nullptr;
++
++static const GLubyte* spoofedGlGetString(GLenum name) {
++    switch(name) {
++    case GL_VENDOR:
++        return (const GLubyte*)"NVIDIA Corporation";
++    case GL_RENDERER:
++        return (const GLubyte*)"NVIDIA GeForce RTX 3080/PCIe/SSE2";
++    case GL_VERSION:
++        return (const GLubyte*)"OpenGL ES 3.2 NVIDIA 555.99";
++    default:
++        return realGlGetString ? realGlGetString(name) : nullptr;
++    }
++}
++
+ void ArmhfSupport::install(std::unordered_map<std::string, void*>& overrides) {
+     auto procFunc = GameWindowManager::getManager()->getProcAddrFunc();
+ #include "opengl_es_2_map.h"
++    auto glGetStringPtr = (const GLubyte* (*)(GLenum))procFunc("glGetString");
++    if(glGetStringPtr) {
++        realGlGetString = glGetStringPtr;
++        overrides["glGetString"] = (void*)spoofedGlGetString;
++    }
+ }
+--- a/mcpelauncher-client/src/jni/main_activity.cpp
++++ b/mcpelauncher-client/src/jni/main_activity.cpp
+@@ -23,8 +23,8 @@
+ 
+ #include <log.h>
+ 
+-FakeJni::JInt BuildVersion::SDK_INT = 32;
+-std::shared_ptr<FakeJni::JString> BuildVersion::RELEASE = std::make_shared<FakeJni::JString>("AndroidX");
++FakeJni::JInt BuildVersion::SDK_INT = 35;
++std::shared_ptr<FakeJni::JString> BuildVersion::RELEASE = std::make_shared<FakeJni::JString>("15");
+ 
+ std::shared_ptr<FakeJni::JString> MainActivity::createUUID() {
+     return UUID::randomUUID()->toString();
+@@ -73,6 +73,7 @@
+ }
+ 
+ FakeJni::JLong MainActivity::getFreeMemory() {
++    return 8LL * 1024LL * 1024LL * 1024LL;
+ #ifdef __APPLE__
+     uint64_t page_size;
+     size_t len = sizeof(page_size);
+@@ -107,6 +108,7 @@
+ }
+ 
+ FakeJni::JLong MainActivity::getTotalMemory() {
++    return 16LL * 1024LL * 1024LL * 1024LL;
+ #ifdef __APPLE__
+     uint64_t memsize;
+     size_t len = sizeof(memsize);
+@@ -135,11 +137,11 @@
+ }
+ 
+ FakeJni::JLong MainActivity::getMemoryLimit() {
+-    return getTotalMemory();
++    return 16LL * 1024LL * 1024LL * 1024LL;
+ }
+ 
+ FakeJni::JLong MainActivity::getAvailableMemory() {
+-    return getTotalMemory();
++    return 8LL * 1024LL * 1024LL * 1024LL;
+ }
+ 
+ void MainActivity::pickImage(FakeJni::JLong callback) {
+--- a/mcpelauncher-client/src/jni/main_activity.h
++++ b/mcpelauncher-client/src/jni/main_activity.h
+@@ -81,11 +81,7 @@
+     DEFINE_CLASS_NAME("com/mojang/minecraftpe/HardwareInformation")
+ 
+     static std::shared_ptr<FakeJni::JString> getAndroidVersion() {
+-#ifdef __APPLE__
+-        return std::make_shared<FakeJni::JString>("macOS");
+-#else
+-        return std::make_shared<FakeJni::JString>("Linux");
+-#endif
++        return std::make_shared<FakeJni::JString>("Android 15");
+     }
+ 
+     std::shared_ptr<FakeJni::JString> getInstallerPackageName() {
+@@ -152,11 +148,7 @@
+     }
+ 
+     std::shared_ptr<FakeJni::JString> getDeviceModel() {
+-#ifdef __APPLE__
+-        return std::make_shared<FakeJni::JString>("macOS");
+-#else
+-        return std::make_shared<FakeJni::JString>("Linux");
+-#endif
++        return std::make_shared<FakeJni::JString>("SM-S928B");
+     }
+ 
+     std::shared_ptr<File> getFilesDir() override {

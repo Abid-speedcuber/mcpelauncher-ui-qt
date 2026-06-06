@@ -67,6 +67,16 @@ modules:
         url: https://github.com/minecraft-linux/mcpelauncher-manifest.git
         commit: 7938a9d77b5dab83365754672d57d19bf91c3c9b
         disable-shallow-clone: true
+      - type: patch
+        path: patches/mcpelauncher-client-high-distance-options.patch
+      - type: patch
+        path: patches/mcpelauncher-client-flagship-device-spoof.patch
+      - type: patch
+        path: patches/mcpelauncher-client-linux-hardware-spoof.patch
+      - type: patch
+        path: patches/mcpelauncher-client-egl-renderer-spoof.patch
+      - type: patch
+        path: patches/mcpelauncher-client-distance-diagnostics.patch
       - type: git
         url: https://github.com/gabomdq/SDL_GameControllerDB
         commit: bd4ef5de42d50480c5be6bd54de164140a62f384

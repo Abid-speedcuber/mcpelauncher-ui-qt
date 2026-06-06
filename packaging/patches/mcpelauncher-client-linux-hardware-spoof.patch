@@ -1,0 +1,106 @@
+diff --git a/libc-shim/src/sched.cpp b/libc-shim/src/sched.cpp
+index 5b241ab..951e11f 100644
+--- a/libc-shim/src/sched.cpp
++++ b/libc-shim/src/sched.cpp
+@@ -11,11 +11,12 @@ int shim::sched_setaffinity(pid_t pid, size_t cpusetsize, const void* mask) {
+ }
+ 
+ int shim::sched_getaffinity(pid_t pid, size_t cpusetsize, const void* mask) {
+-    int ret;
+-#ifdef __linux__
+-    ret = ::sched_getaffinity(pid, cpusetsize, (cpu_set_t*)mask);
+-#else
+-    ret = 0;
+-#endif
+-    return ret;
++    auto cpuSet = (cpu_set_t*) mask;
++    CPU_ZERO(cpuSet);
++    for (int i = 0; i < 8; i++) {
++        CPU_SET(i, cpuSet);
++    }
++    (void) pid;
++    (void) cpusetsize;
++    return 0;
+ }
+diff --git a/libc-shim/src/sysconf.cpp b/libc-shim/src/sysconf.cpp
+index 06ea7d1..f3c6290 100644
+--- a/libc-shim/src/sysconf.cpp
++++ b/libc-shim/src/sysconf.cpp
+@@ -5,6 +5,17 @@
+ #include <stdexcept>
+ 
+ long shim::sysconf(int name) {
++    switch (name) {
++        case 0x0060: // _SC_NPROCESSORS_CONF in Android bionic
++        case 0x0061: // _SC_NPROCESSORS_ONLN in Android bionic
++            return 8;
++        case 0x0062: // _SC_PHYS_PAGES in Android bionic
++            return (16LL * 1024LL * 1024LL * 1024LL) / 4096LL;
++#ifdef _SC_AVPHYS_PAGES
++        case 0x0063: // _SC_AVPHYS_PAGES in Android bionic
++            return (12LL * 1024LL * 1024LL * 1024LL) / 4096LL;
++#endif
++    }
+     return ::sysconf(bionic::to_host_sysconf_id(name));
+ }
+ 
+diff --git a/mcpelauncher-client/src/main.cpp b/mcpelauncher-client/src/main.cpp
+index 8ee216e..949c54d 100644
+--- a/mcpelauncher-client/src/main.cpp
++++ b/mcpelauncher-client/src/main.cpp
+@@ -299,7 +299,7 @@ int main(int argc, char *argv[]) {
+     Log::trace("Launcher", "linker loaded");
+     auto windowManager = GameWindowManager::getManager();
+ 
+-#if !defined(__linux__)
++#if 1
+     // Fake /proc/cpuinfo
+     // https://github.com/pytorch/cpuinfo depends on this file for linux builds
+     auto fakeproc = PathHelper::getPrimaryDataDirectory() + "proc/";
+@@ -335,6 +335,22 @@ power management:
+ 
+ 
+ )";
++        for (int fakeCpu = 1; fakeCpu < 8; fakeCpu++) {
++            fake_cpuinfo << "\nprocessor\t: " << fakeCpu << R"(
++vendor_id	: GenuineIntel
++cpu family	: 6
++model		: 142
++model name	: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
++stepping	: 10
++cpu MHz		: 1991.999
++cache size	: 8192 KB
++physical id	: 0
++siblings	: 8
++core id		: 0
++cpu cores	: 4
++flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov clflush mmx fxsr sse sse2 ss ht syscall nx lm constant_tsc cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 bmi2 rdseed adx
++)";
++        }
+ #elif defined(__arm__) || defined(__aarch64__)
+         fake_cpuinfo << R"(Processor	: AArch64 Processor rev 4 (aarch64)
+ processor	: 0
+@@ -358,12 +374,12 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
+     }
+     std::ofstream fake_cpu_present(fake_cpu + "/present", std::ios::binary | std::ios::trunc);
+     if(fake_cpu_present.is_open()) {
+-        fake_cpu_present << R"(0-3)";
++        fake_cpu_present << R"(0-7)";
+         fake_cpu_present.close();
+     }
+     std::ofstream fake_cpu_possible(fake_cpu + "/possible", std::ios::binary | std::ios::trunc);
+     if(fake_cpu_possible.is_open()) {
+-        fake_cpu_possible << R"(0-3)";
++        fake_cpu_possible << R"(0-7)";
+         fake_cpu_possible.close();
+     }
+ #endif
+@@ -392,7 +407,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
+     shim::rewrite_filesystem_access.emplace_back("/data/data", PathHelper::getPrimaryDataDirectory());
+     // vanilla_music isn't loaded via AAssetManager, it uses libc-shim via relative filepath
+     shim::rewrite_filesystem_access.emplace_back(".", PathHelper::getGameDir() + "assets/");
+-#if !defined(__linux__)
++#if 1
+     // fake proc fs needed for macOS and windows
+     shim::rewrite_filesystem_access.emplace_back("/proc", fakeproc);
+     shim::rewrite_filesystem_access.emplace_back("/sys", fakesys);

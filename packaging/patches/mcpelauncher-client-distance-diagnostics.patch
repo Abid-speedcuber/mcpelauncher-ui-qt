@@ -1,0 +1,194 @@
+--- a/mcpelauncher-client/src/fake_assetmanager.cpp
++++ b/mcpelauncher-client/src/fake_assetmanager.cpp
+@@ -41,6 +41,10 @@
+         return nullptr;
+     }
+ 
++    if(std::strstr(filename, "render_distance") || std::strstr(filename, "graphics") || std::strstr(filename, "performance")) {
++        Log::info("DistanceDiag", "AAssetManager_open('%s') -> '%s'", filename, fullPath.c_str());
++    }
++
+ #ifndef NDEBUG
+     Log::trace("AAssetManager", "Opening file '%s' as '%s'\n", filename, fullPath.c_str());
+ #endif
+--- a/mcpelauncher-client/src/main.cpp
++++ b/mcpelauncher-client/src/main.cpp
+@@ -46,6 +46,10 @@
+ #include <fstream>
+ #include "glad/glad.h"
+ // For getpid
++#include <cstdio>
++#include <cstdint>
++#include <cstdlib>
++#include <vector>
+ #include <unistd.h>
+ #include <simpleipc/client/service_client.h>
+ #include <daemon_utils/auto_shutdown_service.h>
+@@ -93,6 +97,159 @@
+     return PathHelper::getPrimaryDataDirectory() + "games/com.mojang/minecraftpe/options.txt";
+ }
+ 
++static void parseOptions(properties::property_list& properties);
++
++struct McpeMapping {
++    uintptr_t start;
++    uintptr_t end;
++    std::string perms;
++    std::string path;
++};
++
++static std::vector<McpeMapping> getMinecraftMappings() {
++    std::vector<McpeMapping> mappings;
++    std::ifstream maps("/proc/self/maps");
++    std::string line;
++    while(std::getline(maps, line)) {
++        if(line.find("libminecraftpe.so") == std::string::npos)
++            continue;
++        auto dash = line.find('-');
++        auto space = line.find(' ');
++        if(dash == std::string::npos || space == std::string::npos || dash > space)
++            continue;
++        McpeMapping mapping;
++        mapping.start = std::strtoull(line.substr(0, dash).c_str(), nullptr, 16);
++        mapping.end = std::strtoull(line.substr(dash + 1, space - dash - 1).c_str(), nullptr, 16);
++        auto permsEnd = line.find(' ', space + 1);
++        mapping.perms = line.substr(space + 1, permsEnd - space - 1);
++        auto pathStart = line.rfind('/');
++        if(pathStart != std::string::npos)
++            mapping.path = line.substr(pathStart);
++        mappings.push_back(mapping);
++        Log::info("DistanceDiag", "map %p-%p %s %s", (void*)mapping.start, (void*)mapping.end, mapping.perms.c_str(), mapping.path.c_str());
++    }
++    return mappings;
++}
++
++static uintptr_t findNeedleInMapping(const McpeMapping& mapping, const char* needle) {
++    if(mapping.perms.empty() || mapping.perms[0] != 'r')
++        return 0;
++    auto length = std::strlen(needle);
++    if(length == 0 || mapping.end <= mapping.start || mapping.end - mapping.start < length)
++        return 0;
++    auto* begin = reinterpret_cast<const unsigned char*>(mapping.start);
++    auto* end = reinterpret_cast<const unsigned char*>(mapping.end - length);
++    for(auto* cursor = begin; cursor <= end; ++cursor) {
++        if(cursor[0] == (unsigned char)needle[0] && std::memcmp(cursor, needle, length) == 0)
++            return reinterpret_cast<uintptr_t>(cursor);
++    }
++    return 0;
++}
++
++static std::vector<uintptr_t> findRipRelativeXrefs(uintptr_t codeStart, size_t codeSize, uintptr_t target) {
++    std::vector<uintptr_t> hits;
++    auto* code = reinterpret_cast<const unsigned char*>(codeStart);
++    if(codeSize < 8)
++        return hits;
++    for(size_t i = 0; i + 8 < codeSize; ++i) {
++        size_t p = i;
++        if(code[p] >= 0x40 && code[p] <= 0x4f)
++            ++p;
++        unsigned char op = code[p];
++        bool hasModRm =
++            op == 0x8d || op == 0x8b || op == 0x89 || op == 0x8a || op == 0x88 ||
++            op == 0x03 || op == 0x2b || op == 0x3b || op == 0x39 || op == 0x3a ||
++            op == 0x38 || op == 0x85 || op == 0xf7 || op == 0xff || op == 0xc7 ||
++            op == 0x81 || op == 0x83 || op == 0xf6;
++        if(!hasModRm || p + 6 >= codeSize)
++            continue;
++        unsigned char modrm = code[p + 1];
++        if((modrm & 0xc7) != 0x05)
++            continue;
++        int32_t disp;
++        std::memcpy(&disp, &code[p + 2], sizeof(disp));
++        uintptr_t rip = codeStart + p + 6;
++        uintptr_t dest = rip + disp;
++        if(dest >= target - 16 && dest <= target + 128) {
++            hits.push_back(codeStart + i);
++            if(hits.size() >= 64)
++                return hits;
++        }
++    }
++    return hits;
++}
++
++static void logCodeBytes(uintptr_t address) {
++    auto* bytes = reinterpret_cast<const unsigned char*>(address);
++    char buffer[3 * 16 + 1] = {};
++    for(int i = 0; i < 16; ++i) {
++        std::snprintf(buffer + i * 3, sizeof(buffer) - i * 3, "%02x ", bytes[i]);
++    }
++    Log::info("DistanceDiag", "    bytes %p: %s", (void*)address, buffer);
++}
++
++static void runDistanceDiagnostics(void* handle) {
++    Log::info("DistanceDiag", "begin");
++    auto mappings = getMinecraftMappings();
++    size_t codeBase = 0;
++    size_t codeSize = 0;
++    linker::get_library_code_region(handle, codeBase, codeSize);
++    Log::info("DistanceDiag", "code region %p size 0x%zx", (void*)codeBase, codeSize);
++
++    static const char* needles[] = {
++        "options.renderDistance",
++        "options.renderDistanceFormat",
++        "options.renderDistanceRecommendedFormat",
++        "maximumRenderDistance",
++        "maxRenderDistance",
++        "viewDistanceChunks",
++        "defaultRenderDistance",
++        "render_distance_levels",
++        "gfx_viewdistance",
++        "gfx_renderdistance",
++        "query.client_max_render_distance",
++        "simulationDistance",
++        "simulationDistanceOptions",
++        "vanilla.simulationDistanceOptions",
++        "memory_performance_tier",
++        "graphicsDeviceTier",
++        "memoryDeviceTier",
++        "hardwareMemoryTier",
++        "device_info_memory_tier_override",
++    };
++
++    for(const char* needle : needles) {
++        uintptr_t found = 0;
++        for(const auto& mapping : mappings) {
++            found = findNeedleInMapping(mapping, needle);
++            if(found)
++                break;
++        }
++        if(!found) {
++            Log::info("DistanceDiag", "needle '%s' not found", needle);
++            continue;
++        }
++        Log::info("DistanceDiag", "needle '%s' at %p rel 0x%zx", needle, (void*)found, found - MinecraftUtils::getLibraryBase(handle));
++        auto xrefs = findRipRelativeXrefs(codeBase, codeSize, found);
++        Log::info("DistanceDiag", "needle '%s' xrefs %zu", needle, xrefs.size());
++        for(size_t i = 0; i < xrefs.size() && i < 16; ++i) {
++            Log::info("DistanceDiag", "  xref[%zu] %p rel 0x%zx", i, (void*)xrefs[i], xrefs[i] - MinecraftUtils::getLibraryBase(handle));
++            logCodeBytes(xrefs[i]);
++        }
++    }
++
++    properties::property_list properties(':');
++    properties::property<int> gfxViewDistance(properties, "gfx_viewdistance", -1);
++    properties::property<int> gfxRenderDistance(properties, "gfx_renderdistance", -1);
++    properties::property<int> simDistance(properties, "simulationdistance", -1);
++    properties::property<int> serverViewDistance(properties, "server_viewdistance", -1);
++    properties::property<int> memoryTier(properties, "device_info_memory_tier_override", -1);
++    parseOptions(properties);
++    Log::info("DistanceDiag", "options gfx_viewdistance=%d gfx_renderdistance=%d simulationdistance=%d server_viewdistance=%d memory_tier_override=%d",
++              gfxViewDistance.get(), gfxRenderDistance.get(), simDistance.get(), serverViewDistance.get(), memoryTier.get());
++    Log::info("DistanceDiag", "end");
++}
++
+ static void parseOptions(properties::property_list& properties) {
+     std::ifstream propertiesFile(getOptionsPath());
+     if(propertiesFile) {
+@@ -548,6 +710,7 @@
+     Log::debug("Launcher", "Minecraft is at offset 0x%" PRIXPTR, (uintptr_t)MinecraftUtils::getLibraryBase(handle));
+     base = MinecraftUtils::getLibraryBase(handle);
+ 
++    runDistanceDiagnostics(handle);
+     if(!freeOnly.get()) {
+         modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
+         for(auto&& d : modDirs) {

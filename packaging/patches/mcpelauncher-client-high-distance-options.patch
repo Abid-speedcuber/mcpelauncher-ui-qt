@@ -1,0 +1,209 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Abid speedcuber <abid-speedcuber@users.noreply.github.com>
+Date: Fri, 5 Jun 2026 22:45:00 +0600
+Subject: [PATCH] Add launch-time high distance option boost
+
+---
+ mcpelauncher-client/src/jni/main_activity.h |  2 +-
+ mcpelauncher-client/src/main.cpp     | 61 ++++++++++++++++++++++++++++++++++++++++
+ mcpelauncher-client/src/settings.cpp | 31 +++++++++++++++++++++
+ mcpelauncher-client/src/settings.h   |  7 ++++++
+ 4 files changed, 100 insertions(+), 1 deletion(-)
+
+diff --git a/mcpelauncher-client/src/jni/main_activity.h b/mcpelauncher-client/src/jni/main_activity.h
+index 7fe4b38..b000000 100644
+--- a/mcpelauncher-client/src/jni/main_activity.h
++++ b/mcpelauncher-client/src/jni/main_activity.h
+@@ -144,7 +144,7 @@ public:
+     }
+ 
+     FakeJni::JBoolean isChromebook() {
+-        return true;
++        return false;
+     }
+ 
+     std::shared_ptr<FakeJni::JString> getLocale() {
+diff --git a/mcpelauncher-client/src/main.cpp b/mcpelauncher-client/src/main.cpp
+index f444827..b000000 100644
+--- a/mcpelauncher-client/src/main.cpp
++++ b/mcpelauncher-client/src/main.cpp
+@@ -119,6 +119,8 @@ static void saveOptions(properties::property_list& properties) {
+ }
+ 
+ void readOptions();
++void applyHighDistanceOptions();
++void disableChromebookDetection(void* handle);
+ 
+ int main(int argc, char* argv[]) {
+     if(argc == 2 && argv[1][0] != '-') {
+@@ -299,6 +301,7 @@ int main(int argc, char* argv[]) {
+         Settings::load();
+         Log::info("Launcher", "Applied Launcher Settings");
+     }
++    applyHighDistanceOptions();
+ 
+     Log::trace("Launcher", "Loading android libraries");
+     linker::init();
+@@ -542,6 +545,7 @@ int main(int argc, char* argv[]) {
+     Log::info("Launcher", "Loaded Minecraft library");
+     Log::debug("Launcher", "Minecraft is at offset 0x%" PRIXPTR, (uintptr_t)MinecraftUtils::getLibraryBase(handle));
+     base = MinecraftUtils::getLibraryBase(handle);
++    disableChromebookDetection(handle);
+ 
+     if(!freeOnly.get()) {
+         modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
+@@ -760,3 +763,59 @@ void readOptions() {
+ 
+     GameOptions::fullKeyboard = fullKeyboard;
+ }
++
++void disableChromebookDetection(void* handle) {
++#if defined(__i386__) || defined(__x86_64__)
++    void* ptr = linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isAndroidChromebook");
++    if(!ptr)
++        return;
++
++    unsigned char returnFalse[3] = {0x31, 0xC0, 0xC3};
++    memcpy(ptr, returnFalse, sizeof(returnFalse));
++    Log::info("Launcher", "Disabled Minecraft Chromebook device profile");
++#endif
++}
++
++void applyHighDistanceOptions() {
++    if(!Settings::enable_high_distance_options)
++        return;
++
++    properties::property_list properties(':');
++    properties::property<int> viewDistance(properties, "gfx_viewdistance", 0);
++    properties::property<int> particleViewDistance(properties, "gfx_particleviewdistance", 0);
++    properties::property<int> rayTracingViewDistance(properties, "raytracing_viewdistance", 0);
++    properties::property<int> deferredViewDistance(properties, "deferred_viewdistance", 0);
++    properties::property<int> memoryTierOverride(properties, "device_info_memory_tier_override", 0);
++    properties::property<bool> useMemoryTierOverride(properties, "device_info_use_memory_tier_override", false);
++    properties::property<bool> showRenderDistanceWarning(properties, "show_render_distance_warning_modal", false);
++
++    parseOptions(properties);
++
++    bool changed = false;
++    auto raiseInt = [&](auto& option, int value) {
++        if(option.get() < value) {
++            option.set(value);
++            changed = true;
++        }
++    };
++    auto setBool = [&](auto& option, bool value) {
++        if(option.get() != value) {
++            option.set(value);
++            changed = true;
++        }
++    };
++
++    raiseInt(viewDistance, Settings::high_distance_render_chunks);
++    raiseInt(particleViewDistance, Settings::high_distance_particle_chunks);
++    raiseInt(rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
++    raiseInt(deferredViewDistance, Settings::high_distance_deferred_chunks);
++    raiseInt(memoryTierOverride, Settings::high_distance_memory_tier);
++    setBool(useMemoryTierOverride, true);
++    setBool(showRenderDistanceWarning, false);
++
++    if(changed) {
++        Log::info("Launcher", "Applied high distance options: render=%d, particles=%d, memory tier=%d",
++                  Settings::high_distance_render_chunks, Settings::high_distance_particle_chunks, Settings::high_distance_memory_tier);
++        saveOptions(properties);
++    }
++}
+diff --git a/mcpelauncher-client/src/settings.cpp b/mcpelauncher-client/src/settings.cpp
+index 8c78010..b000000 100644
+--- a/mcpelauncher-client/src/settings.cpp
++++ b/mcpelauncher-client/src/settings.cpp
+@@ -2,7 +2,8 @@
+ #include <properties/property_list.h>
+ #include <properties/property.h>
+ #include <mcpelauncher/path_helper.h>
+ #include <fstream>
++#include <algorithm>
+ 
+ std::optional<bool> Settings::enable_imgui = {};
+ std::atomic<int> Settings::menubarsize = 0;
+@@ -24,6 +25,13 @@ std::string Settings::menubarFocusKey;
+ bool Settings::fullscreen;
+ bool Settings::vsync;
+ 
++bool Settings::enable_high_distance_options = true;
++int Settings::high_distance_render_chunks = 448;
++int Settings::high_distance_particle_chunks = 256;
++int Settings::high_distance_raytracing_chunks = 64;
++int Settings::high_distance_deferred_chunks = 64;
++int Settings::high_distance_memory_tier = 4;
++
+ char GameOptions::leftKey = 'A';
+ char GameOptions::downKey = 'S';
+ char GameOptions::rightKey = 'D';
+@@ -55,6 +62,21 @@ static properties::property<std::string> menubarFocusKey(settings, "menubarFocus
+ static properties::property<bool> fullscreen(settings, "fullscreen", /* default if not defined*/ false);
+ static properties::property<bool> vsync(settings, "vsync", /* default if not defined*/ true);
+ 
++static properties::property<bool> enable_high_distance_options(settings, "enable_high_distance_options", /* default if not defined*/ true);
++static properties::property<int> high_distance_render_chunks(settings, "high_distance_render_chunks", /* default if not defined*/ 448);
++static properties::property<int> high_distance_particle_chunks(settings, "high_distance_particle_chunks", /* default if not defined*/ 256);
++static properties::property<int> high_distance_raytracing_chunks(settings, "high_distance_raytracing_chunks", /* default if not defined*/ 64);
++static properties::property<int> high_distance_deferred_chunks(settings, "high_distance_deferred_chunks", /* default if not defined*/ 64);
++static properties::property<int> high_distance_memory_tier(settings, "high_distance_memory_tier", /* default if not defined*/ 4);
++
++static int clampedDistance(int value) {
++    return std::max(0, std::min(value, 1024));
++}
++
++static int clampedMemoryTier(int value) {
++    return std::max(0, std::min(value, 9));
++}
++
+ std::string Settings::getPath() {
+     return PathHelper::getPrimaryDataDirectory() + "mcpelauncher-client-settings.txt";
+ }
+@@ -91,6 +113,13 @@ void Settings::load() {
+     Settings::menubarFocusKey = ::menubarFocusKey.get();
+     Settings::fullscreen = ::fullscreen.get();
+     Settings::vsync = ::vsync.get();
++
++    Settings::enable_high_distance_options = ::enable_high_distance_options.get();
++    Settings::high_distance_render_chunks = clampedDistance(::high_distance_render_chunks.get());
++    Settings::high_distance_particle_chunks = clampedDistance(::high_distance_particle_chunks.get());
++    Settings::high_distance_raytracing_chunks = clampedDistance(::high_distance_raytracing_chunks.get());
++    Settings::high_distance_deferred_chunks = clampedDistance(::high_distance_deferred_chunks.get());
++    Settings::high_distance_memory_tier = clampedMemoryTier(::high_distance_memory_tier.get());
+ }
+ 
+ void Settings::save() {
+@@ -126,6 +155,13 @@ void Settings::save() {
+     ::fullscreen.set(Settings::fullscreen);
+     ::vsync.set(Settings::vsync);
+     if(propertiesFile) {
++        ::enable_high_distance_options.set(Settings::enable_high_distance_options);
++        ::high_distance_render_chunks.set(Settings::high_distance_render_chunks);
++        ::high_distance_particle_chunks.set(Settings::high_distance_particle_chunks);
++        ::high_distance_raytracing_chunks.set(Settings::high_distance_raytracing_chunks);
++        ::high_distance_deferred_chunks.set(Settings::high_distance_deferred_chunks);
++        ::high_distance_memory_tier.set(Settings::high_distance_memory_tier);
++
+         settings.save(propertiesFile);
+     }
+ }
+diff --git a/mcpelauncher-client/src/settings.h b/mcpelauncher-client/src/settings.h
+index 83b9df2..b000000 100644
+--- a/mcpelauncher-client/src/settings.h
++++ b/mcpelauncher-client/src/settings.h
+@@ -25,6 +25,13 @@ struct Settings {
+     static bool fullscreen;
+     static bool vsync;
+ 
++    static bool enable_high_distance_options;
++    static int high_distance_render_chunks;
++    static int high_distance_particle_chunks;
++    static int high_distance_raytracing_chunks;
++    static int high_distance_deferred_chunks;
++    static int high_distance_memory_tier;
++
+     static std::string getPath();
+     static void load();
+     static void save();

@@ -1,0 +1,38 @@
+--- a/mcpelauncher-client/src/fake_egl.cpp
++++ b/mcpelauncher-client/src/fake_egl.cpp
+@@ -17,6 +17,23 @@
+ static void *(*hostProcAddrFn)(const char *);
+ static std::unordered_map<std::string, void *> hostProcOverrides;
+ 
++static const unsigned char *(*hostGlGetString)(unsigned int);
++
++static const unsigned char *spoofedGlGetString(unsigned int name) {
++    switch(name) {
++    case 0x1F00:
++        return (const unsigned char *)"NVIDIA Corporation";
++    case 0x1F01:
++        return (const unsigned char *)"NVIDIA GeForce RTX 3080/PCIe/SSE2";
++    case 0x1F02:
++        return (const unsigned char *)"OpenGL ES 3.2 NVIDIA 555.99";
++    default:
++        if(hostGlGetString)
++            return hostGlGetString(name);
++        return nullptr;
++    }
++}
++
+ EGLBoolean eglInitialize(EGLDisplay display, EGLint *major, EGLint *minor) {
+     if(major)
+         *major = 1;
+@@ -189,6 +206,11 @@
+ }
+ 
+ void FakeEGL::setupGLOverrides() {
++    auto rawGlGetString = (const unsigned char *(*)(unsigned int))fake_egl::hostProcAddrFn("glGetString");
++    if(rawGlGetString) {
++        fake_egl::hostGlGetString = rawGlGetString;
++        fake_egl::hostProcOverrides["glGetString"] = (void *)fake_egl::spoofedGlGetString;
++    }
+ #ifdef USE_ARMHF_SUPPORT
+     ArmhfSupport::install(fake_egl::hostProcOverrides);
+ #endif
