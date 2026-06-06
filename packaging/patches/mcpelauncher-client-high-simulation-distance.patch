@@ -1,0 +1,166 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Abid speedcuber <abid-speedcuber@users.noreply.github.com>
+Date: Sat, 6 Jun 2026 12:50:00 +0600
+Subject: [PATCH] Force high simulation distance options
+
+---
+ mcpelauncher-client/src/main.cpp     | 57 +++++++++++++++++++++++++--
+ mcpelauncher-client/src/settings.cpp |  5 +++
+ mcpelauncher-client/src/settings.h   |  1 +
+ 3 files changed, 59 insertions(+), 4 deletions(-)
+
+diff --git a/mcpelauncher-client/src/main.cpp b/mcpelauncher-client/src/main.cpp
+index b000000..b000001 100644
+--- a/mcpelauncher-client/src/main.cpp
++++ b/mcpelauncher-client/src/main.cpp
+@@ -46,6 +46,8 @@
+ #include <fstream>
+ #include "glad/glad.h"
+ // For getpid
++#include <cstring>
++#include <sys/mman.h>
+ #include <unistd.h>
+ #include <simpleipc/client/service_client.h>
+ #include <daemon_utils/auto_shutdown_service.h>
+@@ -121,6 +123,7 @@ static void saveOptions(properties::property_list& properties) {
+ void readOptions();
+ void applyHighDistanceOptions();
+ void disableChromebookDetection(void* handle);
++void forceHighSimulationDistance(void* handle);
+ 
+ int main(int argc, char* argv[]) {
+     if(argc == 2 && argv[1][0] != '-') {
+@@ -546,6 +549,7 @@ int main(int argc, char* argv[]) {
+     Log::debug("Launcher", "Minecraft is at offset 0x%" PRIXPTR, (uintptr_t)MinecraftUtils::getLibraryBase(handle));
+     base = MinecraftUtils::getLibraryBase(handle);
+     disableChromebookDetection(handle);
++    forceHighSimulationDistance(handle);
+ 
+     if(!freeOnly.get()) {
+         modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
+@@ -779,6 +783,50 @@ void disableChromebookDetection(void* handle) {
+ #endif
+ }
+ 
++static bool patchMinecraftBytes(void* handle, uintptr_t offset, const unsigned char* expected, const unsigned char* replacement, size_t size, const char* name) {
++#if defined(__i386__) || defined(__x86_64__)
++    auto address = reinterpret_cast<uintptr_t>(MinecraftUtils::getLibraryBase(handle)) + offset;
++    if(std::memcmp(reinterpret_cast<void*>(address), expected, size) != 0) {
++        Log::warn("Launcher", "Skipped %s patch: byte pattern mismatch at 0x%zx", name, static_cast<size_t>(offset));
++        return false;
++    }
++
++    long pageSize = sysconf(_SC_PAGESIZE);
++    if(pageSize <= 0)
++        return false;
++
++    auto page = address & ~(static_cast<uintptr_t>(pageSize) - 1);
++    auto pageEnd = (address + size + pageSize - 1) & ~(static_cast<uintptr_t>(pageSize) - 1);
++    if(mprotect(reinterpret_cast<void*>(page), pageEnd - page, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
++        Log::warn("Launcher", "Failed to make Minecraft code writable for %s patch", name);
++        return false;
++    }
++
++    std::memcpy(reinterpret_cast<void*>(address), replacement, size);
++    __builtin___clear_cache(reinterpret_cast<char*>(address), reinterpret_cast<char*>(address + size));
++    mprotect(reinterpret_cast<void*>(page), pageEnd - page, PROT_READ | PROT_EXEC);
++    Log::info("Launcher", "Applied %s patch at 0x%zx", name, static_cast<size_t>(offset));
++    return true;
++#else
++    (void)handle;
++    (void)offset;
++    (void)expected;
++    (void)replacement;
++    (void)size;
++    (void)name;
++    return false;
++#endif
++}
++
++void forceHighSimulationDistance(void* handle) {
++    if(!Settings::enable_high_distance_options || Settings::high_distance_simulation_chunks <= 8 || Settings::high_distance_simulation_chunks > 127)
++        return;
++
++    unsigned char expected[] = {0xff, 0x90, 0x70, 0x07, 0x00, 0x00};
++    unsigned char replacement[] = {0xb8, static_cast<unsigned char>(Settings::high_distance_simulation_chunks), 0x00, 0x00, 0x00, 0x90};
++    patchMinecraftBytes(handle, 0xb954be7, expected, replacement, sizeof(expected), "simulation distance max");
++}
++
+ void applyHighDistanceOptions() {
+     if(!Settings::enable_high_distance_options)
+         return;
+@@ -789,6 +833,7 @@ void applyHighDistanceOptions() {
+     properties::property<int> particleViewDistance(properties, "gfx_particleviewdistance", 0);
+     properties::property<int> rayTracingViewDistance(properties, "raytracing_viewdistance", 0);
+     properties::property<int> deferredViewDistance(properties, "deferred_viewdistance", 0);
++    properties::property<int> simDistance(properties, "simulationdistance", 0);
+     properties::property<int> memoryTierOverride(properties, "device_info_memory_tier_override", 0);
+     properties::property<bool> useMemoryTierOverride(properties, "device_info_use_memory_tier_override", false);
+     properties::property<bool> showRenderDistanceWarning(properties, "show_render_distance_warning_modal", false);
+@@ -815,13 +860,15 @@ void applyHighDistanceOptions() {
+     raiseInt(particleViewDistance, Settings::high_distance_particle_chunks);
+     raiseInt(rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
+     raiseInt(deferredViewDistance, Settings::high_distance_deferred_chunks);
++    raiseInt(simDistance, Settings::high_distance_simulation_chunks);
+     raiseInt(memoryTierOverride, Settings::high_distance_memory_tier);
+     setBool(useMemoryTierOverride, true);
+     setBool(showRenderDistanceWarning, false);
+ 
+     if(changed) {
+-        Log::info("Launcher", "Applied high distance options: render=%d, particles=%d, memory tier=%d",
+-                  Settings::high_distance_render_chunks, Settings::high_distance_particle_chunks, Settings::high_distance_memory_tier);
++        Log::info("Launcher", "Applied high distance options: render=%d, sim=%d, particles=%d, memory tier=%d",
++                  Settings::high_distance_render_chunks, Settings::high_distance_simulation_chunks,
++                  Settings::high_distance_particle_chunks, Settings::high_distance_memory_tier);
+         saveOptions(properties);
+     }
+ }
+diff --git a/mcpelauncher-client/src/settings.cpp b/mcpelauncher-client/src/settings.cpp
+index b000000..b000001 100644
+--- a/mcpelauncher-client/src/settings.cpp
++++ b/mcpelauncher-client/src/settings.cpp
+@@ -30,6 +30,7 @@ int Settings::high_distance_render_chunks = 448;
+ int Settings::high_distance_particle_chunks = 256;
+ int Settings::high_distance_raytracing_chunks = 64;
+ int Settings::high_distance_deferred_chunks = 64;
++int Settings::high_distance_simulation_chunks = 22;
+ int Settings::high_distance_memory_tier = 4;
+ 
+ char GameOptions::leftKey = 'A';
+@@ -67,6 +68,7 @@ static properties::property<bool> enable_high_distance_options(settings, "enable
+ static properties::property<int> high_distance_render_chunks(settings, "high_distance_render_chunks", /* default if not defined*/ 448);
+ static properties::property<int> high_distance_particle_chunks(settings, "high_distance_particle_chunks", /* default if not defined*/ 256);
+ static properties::property<int> high_distance_raytracing_chunks(settings, "high_distance_raytracing_chunks", /* default if not defined*/ 64);
+ static properties::property<int> high_distance_deferred_chunks(settings, "high_distance_deferred_chunks", /* default if not defined*/ 64);
++static properties::property<int> high_distance_simulation_chunks(settings, "high_distance_simulation_chunks", /* default if not defined*/ 22);
+ static properties::property<int> high_distance_memory_tier(settings, "high_distance_memory_tier", /* default if not defined*/ 4);
+ 
+ static int clampedDistance(int value) {
+@@ -119,6 +121,7 @@ void Settings::load() {
+     Settings::high_distance_particle_chunks = clampedDistance(::high_distance_particle_chunks.get());
+     Settings::high_distance_raytracing_chunks = clampedDistance(::high_distance_raytracing_chunks.get());
+     Settings::high_distance_deferred_chunks = clampedDistance(::high_distance_deferred_chunks.get());
++    Settings::high_distance_simulation_chunks = clampedDistance(::high_distance_simulation_chunks.get());
+     Settings::high_distance_memory_tier = clampedMemoryTier(::high_distance_memory_tier.get());
+ }
+ 
+@@ -160,6 +163,7 @@ void Settings::save() {
+         ::high_distance_particle_chunks.set(Settings::high_distance_particle_chunks);
+         ::high_distance_raytracing_chunks.set(Settings::high_distance_raytracing_chunks);
+         ::high_distance_deferred_chunks.set(Settings::high_distance_deferred_chunks);
++        ::high_distance_simulation_chunks.set(Settings::high_distance_simulation_chunks);
+         ::high_distance_memory_tier.set(Settings::high_distance_memory_tier);
+ 
+         settings.save(propertiesFile);
+diff --git a/mcpelauncher-client/src/settings.h b/mcpelauncher-client/src/settings.h
+index b000000..b000001 100644
+--- a/mcpelauncher-client/src/settings.h
++++ b/mcpelauncher-client/src/settings.h
+@@ -30,6 +30,7 @@ struct Settings {
+     static int high_distance_particle_chunks;
+     static int high_distance_raytracing_chunks;
+     static int high_distance_deferred_chunks;
++    static int high_distance_simulation_chunks;
+     static int high_distance_memory_tier;
+ 
+     static std::string getPath();

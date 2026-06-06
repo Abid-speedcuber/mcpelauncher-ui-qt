@@ -13,7 +13,7 @@
  #endif
 --- a/mcpelauncher-client/src/main.cpp
 +++ b/mcpelauncher-client/src/main.cpp
-@@ -46,6 +46,10 @@
+@@ -46,8 +46,12 @@
  #include <fstream>
  #include "glad/glad.h"
  // For getpid
@@ -21,6 +21,8 @@
 +#include <cstdint>
 +#include <cstdlib>
 +#include <vector>
+ #include <cstring>
+ #include <sys/mman.h>
  #include <unistd.h>
  #include <simpleipc/client/service_client.h>
  #include <daemon_utils/auto_shutdown_service.h>

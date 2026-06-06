@@ -70,6 +70,8 @@ modules:
       - type: patch
         path: patches/mcpelauncher-client-high-distance-options.patch
       - type: patch
+        path: patches/mcpelauncher-client-high-simulation-distance.patch
+      - type: patch
         path: patches/mcpelauncher-client-flagship-device-spoof.patch
       - type: patch
         path: patches/mcpelauncher-client-linux-hardware-spoof.patch
