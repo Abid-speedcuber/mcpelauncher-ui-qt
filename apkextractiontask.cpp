@@ -3,6 +3,8 @@
 #include <QUrl>
 #include <QDebug>
 #include <QFile>
+#include <QFileInfo>
+#include <QDir>
 #include <mcpelauncher/zip_extractor.h>
 #include <mcpelauncher/minecraft_extract_utils.h>
 #include <mcpelauncher/apkinfo.h>
@@ -155,7 +157,13 @@ void ApkExtractionTask::run() {
         if (apkInfo.versionName.empty()) {
             throw std::runtime_error(QObject::tr("unsupported, versionsname of the apk is empty").toStdString());
         }
-        QString targetDir = versionManager()->getDirectoryFor(apkInfo.versionName);
+        QString targetDirectory = m_targetDirectory;
+        if (targetDirectory.isEmpty())
+            targetDirectory = versionManager()->createUniqueDirectoryName(QString::fromStdString(apkInfo.versionName));
+        QString targetDir = versionManager()->getDirectoryFor(targetDirectory);
+        if (!m_targetDirectory.isEmpty() && QFileInfo::exists(targetDir)) {
+            QDir(targetDir).removeRecursively();
+        }
         if (mergeDirsRecusive(dir.path(), targetDir)) {
             dir.setAutoRemove(false);
         }
@@ -163,10 +171,12 @@ void ApkExtractionTask::run() {
         emit versionInformationObtained(QDir(targetDir).dirName(), QString::fromStdString(apkInfo.versionName), apkInfo.versionCode);
     } catch (std::exception& e) {
         m_versionName.clear();
+        m_targetDirectory.clear();
         emit error(e.what());
         return;
     }
     m_versionName.clear();
+    m_targetDirectory.clear();
     
     emit finished();
 }

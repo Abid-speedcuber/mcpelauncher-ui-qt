@@ -4,6 +4,7 @@
         <file>qml/ApkImportWindow.qml</file>
         <file>qml/ApkImportHelper.qml</file>
         <file>qml/PackImportWindow.qml</file>
+        <file>qml/InstanceStorageWindow.qml</file>
         <file>qml/BaseScreen.qml</file>
         <file>qml/ErrorScreen.qml</file>
         <file>qml/HomeScreen.qml</file>
@@ -11,6 +12,7 @@
         <file>qml/Components/BaseHeader.qml</file>
         <file>qml/Components/FocusBorder.qml</file>
         <file>qml/Components/MButton.qml</file>
+        <file>qml/Components/MComboBox.qml</file>
         <file>qml/Components/MProgressBar.qml</file>
         <file>qml/Components/MText.qml</file>
         <file>Resources/mcpelauncher-logo.svg</file>

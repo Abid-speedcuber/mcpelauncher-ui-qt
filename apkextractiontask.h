@@ -14,6 +14,7 @@ class ApkExtractionTask : public QThread {
     Q_PROPERTY(bool active READ active NOTIFY activeChanged)
     Q_PROPERTY(bool allowIncompatible READ allowIncompatible WRITE SetAllowIncompatible)
     Q_PROPERTY(QString versionName READ versionName WRITE setVersionName)
+    Q_PROPERTY(QString targetDirectory READ targetDirectory WRITE setTargetDirectory)
     Q_PROPERTY(QStringList allowedPackages READ allowedPackages WRITE setAllowedPackages)
 
     QMutex mutex;
@@ -21,6 +22,7 @@ class ApkExtractionTask : public QThread {
     VersionManager* m_versionManager;
     bool m_allowIncompatible;
     QString m_versionName;
+    QString m_targetDirectory;
     QStringList m_allowedPackages;
 
     void run() override;
@@ -67,6 +69,13 @@ public:
     }
     void setVersionName(QString versionName) {
         m_versionName = versionName;
+    }
+
+    QString targetDirectory() {
+        return m_targetDirectory;
+    }
+    void setTargetDirectory(QString targetDirectory) {
+        m_targetDirectory = targetDirectory;
     }
 
     QStringList allowedPackages() {

@@ -10,6 +10,7 @@
 #include "launcherapp.h"
 #include "zipextractiontask.h"
 #include "packimporttask.h"
+#include "storagemanager.h"
 
 #include <QCommandLineParser>
 #include <QCommandLineOption>
@@ -72,6 +73,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonType<QmlUrlUtils>("io.mrarm.mcpelauncher", 1, 0, "QmlUrlUtils", &QmlUrlUtils::createInstance);
     qmlRegisterType<ZipExtractionTask>("io.mrarm.mcpelauncher", 1, 0, "ZipExtractionTask");
     qmlRegisterType<PackImportTask>("io.mrarm.mcpelauncher", 1, 0, "PackImportTask");
+    qmlRegisterType<StorageManager>("io.mrarm.mcpelauncher", 1, 0, "StorageManager");
     QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).mkpath("mcpelauncher/background_art");
 
     QQmlApplicationEngine engine;

@@ -25,17 +25,18 @@ std::string GameLauncher::findLauncher(std::string name) {
 }
 
 void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLicense, QString filepath) {
-    if (running()) {
-        return;
-    }
     m_disableGameLog = disableGameLog;
-    process.reset(new QProcess);
+    QProcess* process = new QProcess(this);
     QStringList args;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     
     if (m_gameDir.length() > 0) {
         args.append("-dg");
         args.append(m_gameDir);
+    }
+    if (m_dataDir.length() > 0) {
+        args.append("-dd");
+        args.append(m_dataDir);
     }
     if (filepath.length() > 0) {
         args.append("--import-file-path");
@@ -58,13 +59,16 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
             process->setStandardOutputFile("/dev/null");
         #endif
     }
-    emit logCleared();
+    if (processes.isEmpty())
+        emit logCleared();
     emit logAppended(tr("Game directory: %1\n").arg(m_gameDir));
+    emit logAppended(tr("Data directory: %1\n").arg(m_dataDir));
     emit logAppended(tr("PATH: %1\n").arg(env.value("PATH")));
     
-    logAttached();
-    connect(process.data(), QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &GameLauncher::handleFinished);
-    connect(process.data(), &QProcess::errorOccurred, this, &GameLauncher::handleError);
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &GameLauncher::handleFinished);
+    connect(process, &QProcess::errorOccurred, this, &GameLauncher::handleError);
+    if (!m_disableGameLog && m_gamelogopen)
+        connect(process, &QProcess::readyReadStandardOutput, this, &GameLauncher::handleStdOutAvailable);
     m_crashed = false;
     std::stringstream errormsg;
     auto abis = SupportedAndroidAbis::getAbis();
@@ -88,6 +92,7 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
                 auto executable = QString::fromStdString(launcherpath);
                 emit logAppended(tr("Using launcher: %1\n").arg(executable));
                 process->start(executable, args);
+                processes.append(process);
                 emit stateChanged();
                 emit logAppended(QString::fromStdString(getCommandLine(executable)) + "\n");
                 return;
@@ -99,9 +104,8 @@ void GameLauncher::start(bool disableGameLog, QString arch, bool hasVerifiedLice
     if(errormsg.width() == 0) {
         errormsg << "Game not found\n";
     }
-    process.reset();
+    process->deleteLater();
     m_crashed = true;
-    logAttached();
     emit stateChanged();
     emit logAppended(QString::fromStdString(getCommandLine("mcpelauncher-client")) + "\n");
     emit logAppended(QString::fromStdString(errormsg.str()));
@@ -134,11 +138,16 @@ void GameLauncher::startFile(QString file) {
 }
 
 void GameLauncher::handleStdOutAvailable() {
-    emit logAppended(QString::fromUtf8(process->readAllStandardOutput()));
+    auto proc = qobject_cast<QProcess*>(sender());
+    if (!proc && !processes.isEmpty())
+        proc = processes.last();
+    if (proc)
+        emit logAppended(QString::fromUtf8(proc->readAllStandardOutput()));
 }
 
 void GameLauncher::handleFinished(int exitCode, QProcess::ExitStatus exitStatus) {
-    if(!m_disableGameLog && process->bytesAvailable()) {
+    auto proc = qobject_cast<QProcess*>(sender());
+    if(!m_disableGameLog && proc && proc->bytesAvailable()) {
         handleStdOutAvailable();
     }
     QString msg;
@@ -162,7 +171,10 @@ void GameLauncher::handleFinished(int exitCode, QProcess::ExitStatus exitStatus)
         }
         break;
     }
-    process.reset();
+    if (proc) {
+        processes.removeAll(proc);
+        proc->deleteLater();
+    }
     if (!m_disableGameLog)
         emit logAppended("\n" + msg);
     emit stateChanged();
@@ -170,26 +182,33 @@ void GameLauncher::handleFinished(int exitCode, QProcess::ExitStatus exitStatus)
 
 void GameLauncher::handleError(QProcess::ProcessError error) {
     m_crashed = true;
-    logAttached();
-    emit logAppended(tr("Launcher process error %1: %2\n").arg(error).arg(process ? process->errorString() : QString()));
+    auto proc = qobject_cast<QProcess*>(sender());
+    if (proc) {
+        processes.removeAll(proc);
+        proc->deleteLater();
+    }
+    emit logAppended(tr("Launcher process error %1: %2\n").arg(error).arg(proc ? proc->errorString() : QString()));
     emit stateChanged();
     launchFailed();
 }
 
 void GameLauncher::kill() {
-    if (running()) {
+    auto runningProcesses = processes;
+    processes.clear();
+    for (auto* process : runningProcesses) {
+        disconnect(process, nullptr, this, nullptr);
         process->kill();
         process->waitForFinished();
-        process.reset();
-        emit stateChanged();
+        process->deleteLater();
     }
+    emit stateChanged();
 }
 
 void GameLauncher::logAttached() {
     if(!m_disableGameLog) {
         m_gamelogopen = true;
-        if (process) {
-            connect(process.data(), &QProcess::readyReadStandardOutput, this, &GameLauncher::handleStdOutAvailable);
+        for (auto* process : processes) {
+            connect(process, &QProcess::readyReadStandardOutput, this, &GameLauncher::handleStdOutAvailable, Qt::UniqueConnection);
         }
     }
 }
@@ -197,8 +216,8 @@ void GameLauncher::logAttached() {
 void GameLauncher::logDetached() {
     if(!m_disableGameLog) {
         m_gamelogopen = false;
-        if (process) {
-            disconnect(process.data(), &QProcess::readyReadStandardOutput, this, &GameLauncher::handleStdOutAvailable);
+        for (auto* process : processes) {
+            disconnect(process, &QProcess::readyReadStandardOutput, this, &GameLauncher::handleStdOutAvailable);
         }
     }
 }

@@ -42,7 +42,7 @@ option(LAUNCHER_MACOS_HAVE_ARMLAUNCHER "Enables use of the arm launcher" ON)
 
 qt6_add_resources(RESOURCES qml.qrc)
 
-add_executable(${PROJECT_NAME} main.cpp launcherapp.cpp launcherapp.h versionmanager.cpp versionmanager.h apkextractiontask.cpp apkextractiontask.h zipextractiontask.cpp zipextractiontask.h packimporttask.cpp packimporttask.h gamelauncher.cpp gamelauncher.h qmlurlutils.h launchersettings.h supportedandroidabis.cpp supportedandroidabis.h ${RESOURCES})
+add_executable(${PROJECT_NAME} main.cpp launcherapp.cpp launcherapp.h versionmanager.cpp versionmanager.h apkextractiontask.cpp apkextractiontask.h zipextractiontask.cpp zipextractiontask.h packimporttask.cpp packimporttask.h storagemanager.cpp storagemanager.h gamelauncher.cpp gamelauncher.h qmlurlutils.h launchersettings.h supportedandroidabis.cpp supportedandroidabis.h ${RESOURCES})
 
 if(LAUNCHER_DISABLE_DEV_MODE)
     target_compile_definitions(${PROJECT_NAME} PUBLIC LAUNCHER_DISABLE_DEV_MODE)

@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QHash>
 #include <QStringList>
+#include <QVariantList>
 
 class CodeInfo : public QObject {
     Q_OBJECT
@@ -20,20 +21,23 @@ public:
 class VersionInfo : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString directory MEMBER directory CONSTANT)
+    Q_PROPERTY(QString dataDirectory MEMBER dataDirectory CONSTANT)
     Q_PROPERTY(QString versionName MEMBER versionName CONSTANT)
     Q_PROPERTY(int versionCode READ versionCode CONSTANT)
     Q_PROPERTY(QStringList archs READ archs CONSTANT)
     Q_PROPERTY(QList<CodeInfo*> codes READ getCodes CONSTANT)
 public:
     QString directory;
+    QString dataDirectory;
     QString versionName;
     QHash<QString, int> codes;
 
     VersionInfo(QObject* parent = nullptr) : QObject(parent) {}
-    VersionInfo(VersionInfo const& v) : directory(v.directory), versionName(v.versionName), codes(v.codes) {}
+    VersionInfo(VersionInfo const& v) : directory(v.directory), dataDirectory(v.dataDirectory), versionName(v.versionName), codes(v.codes) {}
 
     VersionInfo& operator=(VersionInfo const& v) {
         directory = v.directory;
+        dataDirectory = v.dataDirectory;
         versionName = v.versionName;
         codes = v.codes;
         return *this;
@@ -71,10 +75,10 @@ class VersionList : public QObject {
     Q_PROPERTY(VersionInfo* latestInstalledVersion READ latestInstalledVersion)
 
 private:
-    QMap<int, VersionInfo*>& m_versions;
+    QMap<QString, VersionInfo*>& m_versions;
 
 public:
-    VersionList(QMap<int, VersionInfo*>& versions) : m_versions(versions) {}
+    VersionList(QMap<QString, VersionInfo*>& versions) : m_versions(versions) {}
 
     int size() const { return m_versions.size(); }
 
@@ -84,20 +88,19 @@ public slots:
     QList<QObject*> getAll() const {
         QList<QObject*> ret;
         ret.reserve(m_versions.size());
-        QMap<int, VersionInfo*>::const_iterator i = m_versions.constBegin();
+        QMap<QString, VersionInfo*>::const_iterator i = m_versions.constBegin();
         while (i != m_versions.constEnd()) {
-            if (i.key() == i.value()->versionCode()) {
-                ret.push_back(i.value());;
-            }
+            ret.push_back(i.value());
             ++i;
         }
         return ret;
     }
 
     VersionInfo* get(int versionCode) const {
-        auto it = m_versions.find(versionCode);
-        if (it != m_versions.end())
-            return it.value();
+        for (VersionInfo* v : m_versions) {
+            if (v && v->versionCode() == versionCode)
+                return v;
+        }
         return nullptr;
     }
     VersionInfo* getByDirectory(QString const& directory) const {
@@ -108,7 +111,7 @@ public slots:
         return nullptr;
     }
 
-    bool contains(int versionCode) const { return m_versions.contains(versionCode); }
+    bool contains(int versionCode) const { return get(versionCode) != nullptr; }
 
 };
 
@@ -118,7 +121,8 @@ class VersionManager : public QObject {
 
 private:
     QString baseDir;
-    QMap<int, VersionInfo*> m_versions;
+    QString instancesDir;
+    QMap<QString, VersionInfo*> m_versions;
     VersionList m_versionList;
 
     void loadVersions();
@@ -129,12 +133,15 @@ public:
 
     // This is safe in a multi-thread env, because the baseDir can not be changed
     QString const& getBaseDir() const { return baseDir; }
+    QString const& getInstancesDir() const { return instancesDir; }
 
     QString getTempTemplate();
 
     QString getDirectoryFor(std::string const& versionName);
 
-    void addVersion(QString directory, QString versionName, int versionCode);
+    QString createUniqueDirectoryName(QString desiredName) const;
+
+    void addVersion(QString directory, QString versionName, int versionCode, QString dataDirectory = QString());
 
     VersionList* versionList() { return &m_versionList; }
 
@@ -143,9 +150,21 @@ public slots:
 
     QString getDirectoryFor(VersionInfo* version);
 
-    void removeVersion(VersionInfo* version);
+    QString getDataDirectoryFor(VersionInfo* version);
+
+    QString getWorldsDirectoryFor(VersionInfo* version);
+
+    QString getResourcePacksDirectoryFor(VersionInfo* version);
+
+    QString getBehaviorPacksDirectoryFor(VersionInfo* version);
+
+    void deleteVersion(VersionInfo* version, bool removeData = false);
 
     void removeVersion(VersionInfo* version, QStringList abis);
+
+    VersionInfo* duplicateVersion(VersionInfo* version);
+
+    bool openDirectory(QString path);
 
     bool checkSupport(QString const& versionName);
 

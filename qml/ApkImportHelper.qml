@@ -18,6 +18,7 @@ Item {
     property alias task: apkExtractionTask
     property bool allowIncompatible: false
     property bool trialMode: launcherSettings.trialMode
+    property string pendingTargetDirectory: ""
 
     id: root
 
@@ -34,6 +35,8 @@ Item {
                 return
             }
             console.log("Extracting " + apkExtractionTask.sources.join(','))
+            apkExtractionTask.targetDirectory = root.pendingTargetDirectory
+            root.pendingTargetDirectory = ""
             extractingApk = true
             root.started()
             apkExtractionTask.start()
@@ -77,6 +80,12 @@ Item {
     }
 
     function pickFile() {
+        pendingTargetDirectory = ""
+        apkPicker.open()
+    }
+
+    function pickUpdate(targetDirectory) {
+        pendingTargetDirectory = targetDirectory
         apkPicker.open()
     }
 }

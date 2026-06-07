@@ -76,6 +76,7 @@ int LauncherApp::launchFile(QString filePath, bool startEventLoop) {
     auto versionInfo = vmanager.versionList()->latestInstalledVersion();
     if(versionInfo != nullptr) {
         launcher.setGameDir(vmanager.getDirectoryFor(versionInfo));
+        launcher.setDataDir(vmanager.getDataDirectoryFor(versionInfo));
     } else {
         printf("No game versions found!\n");
         return 1;

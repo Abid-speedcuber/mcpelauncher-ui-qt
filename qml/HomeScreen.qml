@@ -13,7 +13,6 @@ BaseScreen {
     property var launcher
     property var logModel
     property var selectedVersion: null
-    property string gameDataDir: ""
 
     signal gameLogRequested()
 
@@ -103,6 +102,26 @@ BaseScreen {
                             text: qsTr("Import packs...")
                             onTriggered: packImportWindow.pickFiles()
                         }
+                        MenuItem {
+                            text: qsTr("Update APK...")
+                            onTriggered: apkImportWindow.pickUpdate(versionInfo)
+                        }
+                        MenuItem {
+                            text: qsTr("Duplicate")
+                            onTriggered: {
+                                var copy = versionManager.duplicateVersion(versionInfo)
+                                refreshVersions(copy)
+                            }
+                        }
+                        MenuItem {
+                            text: qsTr("Manage storage...")
+                            onTriggered: storageWindow.openFor(versionInfo)
+                        }
+                        MenuSeparator {}
+                        MenuItem {
+                            text: qsTr("Delete...")
+                            onTriggered: deleteWindow.openFor(versionInfo)
+                        }
                     }
 
                     ColumnLayout {
@@ -121,6 +140,14 @@ BaseScreen {
                             text: qsTr("Directory: %1").arg(modelData.directory)
                             color: "#cccccc"
                             font.pointSize: 9
+                        }
+
+                        Text {
+                            text: qsTr("Storage: %1").arg(modelData.dataDirectory || versionManager.getDataDirectoryFor(modelData))
+                            color: "#aaaaaa"
+                            font.pointSize: 9
+                            elide: Text.ElideMiddle
+                            Layout.fillWidth: true
                         }
 
                         Text {
@@ -150,6 +177,7 @@ BaseScreen {
             Button {
                 text: qsTr("Import Packs")
                 Layout.fillWidth: true
+                enabled: homeScreen.selectedVersion !== null
                 onClicked: packImportWindow.pickFiles()
             }
 
@@ -161,18 +189,22 @@ BaseScreen {
             }
 
             Button {
-                text: launcher.running ? qsTr("Running") : qsTr("Play")
+                text: launcher.running ? qsTr("Play Another") : qsTr("Play")
                 Layout.fillWidth: true
-                enabled: homeScreen.selectedVersion !== null && !launcher.running
+                enabled: homeScreen.selectedVersion !== null
                 onClicked: {
                     if (homeScreen.selectedVersion) {
                         var gameDir = versionManager.getDirectoryFor(homeScreen.selectedVersion)
+                        var dataDir = versionManager.getDataDirectoryFor(homeScreen.selectedVersion)
                         if (logModel) {
-                            logModel.clear()
+                            if (!launcher.running)
+                                logModel.clear()
                             logModel.append({ "display": "Launching " + homeScreen.selectedVersion.versionName })
                             logModel.append({ "display": "Game directory: " + gameDir })
+                            logModel.append({ "display": "Data directory: " + dataDir })
                         }
                         launcher.gameDir = gameDir
+                        launcher.dataDir = dataDir
                         if (logModel) {
                             logModel.append({ "display": "Starting launcher process..." })
                         }
@@ -195,14 +227,82 @@ BaseScreen {
         id: apkImportWindow
         versionManager: homeScreen.versionManager
         onImportFinished: {
-            homeScreen.selectedVersion = null
-            versionList.currentIndex = -1
-            versionList.model = versionManager.versions.getAll()
+            refreshVersions(null)
         }
     }
 
     PackImportWindow {
         id: packImportWindow
-        gameDataDir: homeScreen.gameDataDir
+        gameDataDir: homeScreen.selectedVersion ? versionManager.getDataDirectoryFor(homeScreen.selectedVersion) : ""
+    }
+
+    InstanceStorageWindow {
+        id: storageWindow
+        versionManager: homeScreen.versionManager
+    }
+
+    Window {
+        id: deleteWindow
+        visible: false
+        width: 360
+        height: deleteLayout.implicitHeight + 24
+        flags: Qt.Dialog
+        title: qsTr("Delete instance")
+        color: "#333"
+
+        property var versionInfo: null
+
+        function openFor(version) {
+            versionInfo = version
+            show()
+            raise()
+            requestActivate()
+        }
+
+        ColumnLayout {
+            id: deleteLayout
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 10
+
+            Text {
+                Layout.fillWidth: true
+                color: "white"
+                wrapMode: Text.WordWrap
+                text: deleteWindow.versionInfo ? qsTr("Delete %1?").arg(deleteWindow.versionInfo.versionName) : ""
+            }
+
+            Button {
+                Layout.fillWidth: true
+                text: qsTr("Delete APK only")
+                onClicked: {
+                    versionManager.deleteVersion(deleteWindow.versionInfo, false)
+                    deleteWindow.close()
+                    refreshVersions(null)
+                }
+            }
+
+            Button {
+                Layout.fillWidth: true
+                text: qsTr("Delete APK and all data")
+                onClicked: {
+                    versionManager.deleteVersion(deleteWindow.versionInfo, true)
+                    deleteWindow.close()
+                    refreshVersions(null)
+                }
+            }
+
+            Button {
+                Layout.fillWidth: true
+                text: qsTr("Cancel")
+                onClicked: deleteWindow.close()
+            }
+        }
+    }
+
+    function refreshVersions(preferredVersion) {
+        versionList.model = versionManager.versions.getAll()
+        homeScreen.selectedVersion = preferredVersion
+        versionList.currentIndex = -1
     }
 }

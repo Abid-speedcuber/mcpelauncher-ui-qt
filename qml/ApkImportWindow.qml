@@ -48,4 +48,10 @@ Window {
     function pickFile() {
         apkImportHelper.pickFile()
     }
+
+    function pickUpdate(versionInfo) {
+        if (!versionInfo)
+            return
+        apkImportHelper.pickUpdate(versionInfo.directory)
+    }
 }

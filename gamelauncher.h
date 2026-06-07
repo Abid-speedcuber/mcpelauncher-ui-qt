@@ -3,17 +3,20 @@
 
 #include <QObject>
 #include <QProcess>
+#include <QList>
 
 class GameLauncher : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString gameDir READ gameDir WRITE setGameDir)
+    Q_PROPERTY(QString dataDir READ dataDir WRITE setDataDir)
     Q_PROPERTY(bool crashed READ crashed NOTIFY stateChanged)
     Q_PROPERTY(bool running READ running NOTIFY stateChanged)
 
 private:
-    QScopedPointer<QProcess> process;
+    QList<QProcess*> processes;
     QScopedPointer<QProcess> fileprocess;
     QString m_gameDir;
+    QString m_dataDir;
     bool m_crashed = false;
     bool m_gamelogopen = false;
     bool m_disableGameLog = false;
@@ -33,7 +36,11 @@ public:
 
     void setGameDir(QString const& value) { m_gameDir = value; }
 
-    bool running() const { return !process.isNull() && !m_crashed; }
+    QString const& dataDir() { return m_dataDir; }
+
+    void setDataDir(QString const& value) { m_dataDir = value; }
+
+    bool running() const { return !processes.isEmpty(); }
 
     bool crashed() const { return m_crashed; }
 
