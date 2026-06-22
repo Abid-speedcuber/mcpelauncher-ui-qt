@@ -9,7 +9,8 @@ assets.
 Use the Flatpak manifest in this directory. It builds:
 
 - the stripped-down Qt launcher UI
-- `mcpelauncher-client`
+- `mcpelauncher-client` for x86_64 APKs
+- `mcpelauncher-client32` for older x86 APKs
 - the required open-source launcher support libraries
 - desktop, icon, and AppStream metadata
 
@@ -20,6 +21,21 @@ Build a local bundle:
 
 ```sh
 ./scripts/build-flatpak-bundle.sh
+```
+
+The build script intentionally builds `mcpelauncher-client32` in a separate
+Freedesktop i386 SDK stage, then copies that binary into the KDE Flatpak. The
+Qt UI already selects `mcpelauncher-client32` for x86 APKs, which are common in
+older Bedrock releases such as 1.16. Without the extra binary, those imports can
+succeed but launching fails because the requested game launcher does not exist.
+The final app declares `--allow=multiarch` and uses
+`org.freedesktop.Platform.Compat.i386`, so users installing the Flatpak can run
+both the regular x86_64 path and the old x86 path from the same launcher.
+If a system does not already have the compatibility runtime, install it with:
+
+```sh
+flatpak install flathub org.freedesktop.Platform.Compat.i386//25.08
+flatpak install flathub org.freedesktop.Platform.GL32.default//25.08
 ```
 
 Install the bundle:

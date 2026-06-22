@@ -76,5 +76,6 @@ CMakeLists.txt.user
 /build-*/
 /.flatpak-builder/
 /flatpak-build/
+/packaging/generated/
 /repo/
 /*.flatpak

@@ -1,0 +1,72 @@
+From d34edb6aef163055415211330e9f67c506be0f67 Mon Sep 17 00:00:00 2001
+From: PlaGaPlusDev <plagaplusdev@users.noreply.github.com>
+Date: Wed, 17 Jun 2026 01:42:22 -0400
+Subject: [PATCH] fix(storage): add getTotalSpace and use real statvfs values
+
+Newer Bedrock versions query total storage through MainActivity. FakeJni
+returns zero for an unregistered jlong method, which makes Minecraft treat
+the instance as a zero-capacity disk.
+---
+ mcpelauncher-client/src/jni/jni_descriptors.cpp |  1 +
+ mcpelauncher-client/src/jni/main_activity.h     | 23 +++++++++++++++++++++++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/mcpelauncher-client/src/jni/jni_descriptors.cpp b/mcpelauncher-client/src/jni/jni_descriptors.cpp
+index df2d51b..0aa03d8 100644
+--- a/mcpelauncher-client/src/jni/jni_descriptors.cpp
++++ b/mcpelauncher-client/src/jni/jni_descriptors.cpp
+@@ -141,6 +141,7 @@ BEGIN_NATIVE_DESCRIPTOR(MainActivity){Constructor<MainActivity>{}},
+     {Function<&MainActivity::getAllocatableBytes>{}, "getAllocatableBytes"},
+     {Function<&MainActivity::calculateAvailableDiskFreeSpace>{}, "calculateAvailableDiskFreeSpace"},
+     {Function<&MainActivity::getUsableSpace>{}, "getUsableSpace"},
++    {Function<&MainActivity::getTotalSpace>{}, "getTotalSpace"},
+     END_NATIVE_DESCRIPTOR
+ 
+     BEGIN_NATIVE_DESCRIPTOR(AccountManager){Function<&AccountManager::get>{}, "get"},
+diff --git a/mcpelauncher-client/src/jni/main_activity.h b/mcpelauncher-client/src/jni/main_activity.h
+index ed59ff6..f020af4 100644
+--- a/mcpelauncher-client/src/jni/main_activity.h
++++ b/mcpelauncher-client/src/jni/main_activity.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include <fake-jni/fake-jni.h>
++#include <sys/statvfs.h>
+ #include "java_types.h"
+ #include "../text_input_handler.h"
+ 
+@@ -265,10 +266,32 @@ public:
+     void setCaretPosition(FakeJni::JInt pos);
+ 
+     FakeJni::JLong calculateAvailableDiskFreeSpace(std::shared_ptr<FakeJni::JString> str) {
++        if (str) {
++            struct statvfs buf;
++            if (::statvfs(str->asStdString().c_str(), &buf) == 0) {
++                return (FakeJni::JLong)buf.f_bavail * (FakeJni::JLong)buf.f_frsize;
++            }
++        }
+         return 1024LL * 1024LL * 1024LL * 1024LL;
+     }
+ 
+     FakeJni::JLong getUsableSpace(std::shared_ptr<FakeJni::JString> str) {
++        if (str) {
++            struct statvfs buf;
++            if (::statvfs(str->asStdString().c_str(), &buf) == 0) {
++                return (FakeJni::JLong)buf.f_bavail * (FakeJni::JLong)buf.f_frsize;
++            }
++        }
++        return 1024LL * 1024LL * 1024LL * 1024LL;
++    }
++
++    FakeJni::JLong getTotalSpace(std::shared_ptr<FakeJni::JString> str) {
++        if (str) {
++            struct statvfs buf;
++            if (::statvfs(str->asStdString().c_str(), &buf) == 0) {
++                return (FakeJni::JLong)buf.f_blocks * (FakeJni::JLong)buf.f_frsize;
++            }
++        }
+         return 1024LL * 1024LL * 1024LL * 1024LL;
+     }
+ 
+-- 
+2.51.0

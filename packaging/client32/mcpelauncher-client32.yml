@@ -1,0 +1,85 @@
+app-id: io.github.Abid_speedcuber.mcpelauncher_client32
+runtime: org.freedesktop.Platform
+runtime-version: "25.08"
+sdk: org.freedesktop.Sdk
+command: mcpelauncher-client32
+sdk-extensions:
+  - org.freedesktop.Sdk.Compat.i386
+  - org.freedesktop.Sdk.Extension.toolchain-i386
+finish-args:
+  - --allow=multiarch
+add-extensions:
+  org.freedesktop.Platform.Compat.i386:
+    directory: lib/i386-linux-gnu
+    version: "25.08"
+modules:
+  - name: mcpelauncher-client32
+    buildsystem: cmake
+    builddir: true
+    build-options:
+      prepend-pkg-config-path: /app/lib32/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig
+      ldflags: -L/app/lib32
+      prepend-path: /usr/lib/sdk/llvm21/bin:/usr/lib/sdk/toolchain-i386/bin
+      prepend-ld-library-path: /usr/lib/sdk/llvm21/lib:/usr/lib/sdk/toolchain-i386/lib
+      env:
+        CC: clang
+        CXX: clang++
+        CFLAGS: ""
+        CXXFLAGS: ""
+      libdir: /app/lib32
+      config-opts:
+        - -DBUILD_X86=ON
+        - -DGAMEWINDOW_SYSTEM=SDL3
+        - -DENABLE_DEV_PATHS=OFF
+        - -DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON_EXT=../nlohmann_json_ext
+        - -DJNI_USE_JNIVM=ON
+        - -DBUILD_UI=OFF
+        - -DBUILD_WEBVIEW=OFF
+        - -DBUILD_CLIENT=ON
+        - -DUSE_OWN_CURL=OFF
+        - -DCMAKE_BUILD_TYPE=Release
+        - -DCMAKE_C_FLAGS=--target=i686-unknown-linux-gnu -B/usr/lib/sdk/toolchain-i386/lib/x86_64-linux-gnu/gcc/i686-unknown-linux-gnu/15.2.0 -DNDEBUG
+        - -DCMAKE_CXX_FLAGS=--target=i686-unknown-linux-gnu -B/usr/lib/sdk/toolchain-i386/lib/x86_64-linux-gnu/gcc/i686-unknown-linux-gnu/15.2.0 -isystem /usr/lib/sdk/toolchain-i386/i686-unknown-linux-gnu/include/c++/15.2.0 -isystem /usr/lib/sdk/toolchain-i386/i686-unknown-linux-gnu/include/c++/15.2.0/i686-unknown-linux-gnu -isystem /usr/lib/sdk/toolchain-i386/i686-unknown-linux-gnu/include/c++/15.2.0/backward -DNDEBUG
+        - -DCMAKE_ASM_FLAGS=--target=i686-unknown-linux-gnu -B/usr/lib/sdk/toolchain-i386/lib/x86_64-linux-gnu/gcc/i686-unknown-linux-gnu/15.2.0
+        - -DCMAKE_EXE_LINKER_FLAGS=-L/usr/lib/sdk/toolchain-i386/lib/x86_64-linux-gnu/gcc/i686-unknown-linux-gnu/15.2.0 -L/usr/lib/sdk/toolchain-i386/i686-unknown-linux-gnu/lib/i386-linux-gnu
+        - -DCMAKE_SHARED_LINKER_FLAGS=-L/usr/lib/sdk/toolchain-i386/lib/x86_64-linux-gnu/gcc/i686-unknown-linux-gnu/15.2.0 -L/usr/lib/sdk/toolchain-i386/i686-unknown-linux-gnu/lib/i386-linux-gnu
+        - -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    post-install:
+      - mv /app/bin/mcpelauncher-client /app/bin/mcpelauncher-client32
+      - mkdir -p /app/lib/i386-linux-gnu /app/etc
+      - printf '/app/lib32\n/app/lib/i386-linux-gnu\n' > /app/etc/ld.so.conf
+    sources:
+      - type: git
+        url: https://github.com/minecraft-linux/mcpelauncher-manifest.git
+        commit: 7938a9d77b5dab83365754672d57d19bf91c3c9b
+        disable-shallow-clone: true
+      - type: patch
+        path: ../patches/mcpelauncher-client-high-distance-options.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-high-simulation-distance.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-flagship-device-spoof.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-linux-hardware-spoof.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-egl-renderer-spoof.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-distance-diagnostics.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-pthread-sigmask.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-storage-space.patch
+      - type: patch
+        path: ../patches/mcpelauncher-client-old-version-compat.patch
+      - type: git
+        url: https://github.com/gabomdq/SDL_GameControllerDB
+        commit: bd4ef5de42d50480c5be6bd54de164140a62f384
+        dest: gamecontrollerdb
+      - type: file
+        url: https://github.com/nlohmann/json/releases/download/v3.7.3/include.zip
+        sha512: 8efd82a54472335e548d0d5c375b6f2781b4a0f2dbc5aa0acc3f504277ec455e0782046286cf08eb4864ac8bcaa1a9691af8d0259dd71a9e539cfc12e0478eb5
+        dest-filename: nlohmann_json_ext.zip
+      - type: shell
+        commands:
+          - mkdir nlohmann_json_ext
+          - cd nlohmann_json_ext && unzip ../nlohmann_json_ext.zip

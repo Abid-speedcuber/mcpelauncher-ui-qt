@@ -3,15 +3,10 @@ From: Abid speedcuber <abid-speedcuber@users.noreply.github.com>
 Date: Fri, 5 Jun 2026 22:45:00 +0600
 Subject: [PATCH] Add launch-time high distance option boost
 
----
- mcpelauncher-client/src/jni/main_activity.h |  2 +-
- mcpelauncher-client/src/main.cpp     | 61 ++++++++++++++++++++++++++++++++++++++++
- mcpelauncher-client/src/settings.cpp | 31 +++++++++++++++++++++
- mcpelauncher-client/src/settings.h   |  7 ++++++
- 4 files changed, 100 insertions(+), 1 deletion(-)
 
+---
 diff --git a/mcpelauncher-client/src/jni/main_activity.h b/mcpelauncher-client/src/jni/main_activity.h
-index 7fe4b38..b000000 100644
+index ed59ff6..dd01d63 100644
 --- a/mcpelauncher-client/src/jni/main_activity.h
 +++ b/mcpelauncher-client/src/jni/main_activity.h
 @@ -144,7 +144,7 @@ public:
@@ -24,19 +19,34 @@ index 7fe4b38..b000000 100644
  
      std::shared_ptr<FakeJni::JString> getLocale() {
 diff --git a/mcpelauncher-client/src/main.cpp b/mcpelauncher-client/src/main.cpp
-index f444827..b000000 100644
+index 35cd788..9a678f0 100644
 --- a/mcpelauncher-client/src/main.cpp
 +++ b/mcpelauncher-client/src/main.cpp
-@@ -119,6 +119,8 @@ static void saveOptions(properties::property_list& properties) {
+@@ -118,7 +118,23 @@ static void saveOptions(properties::property_list& properties) {
+     }
  }
  
++static bool optionExists(const char* key) {
++    std::ifstream propertiesFile(getOptionsPath());
++    if(!propertiesFile)
++        return false;
++
++    std::string prefix = std::string(key) + ":";
++    std::string line;
++    while(std::getline(propertiesFile, line)) {
++        if(line.compare(0, prefix.size(), prefix) == 0)
++            return true;
++    }
++    return false;
++}
++
  void readOptions();
 +void applyHighDistanceOptions();
 +void disableChromebookDetection(void* handle);
  
  int main(int argc, char* argv[]) {
      if(argc == 2 && argv[1][0] != '-') {
-@@ -299,6 +301,7 @@ int main(int argc, char* argv[]) {
+@@ -292,6 +308,7 @@ int main(int argc, char* argv[]) {
          Settings::load();
          Log::info("Launcher", "Applied Launcher Settings");
      }
@@ -44,7 +54,7 @@ index f444827..b000000 100644
  
      Log::trace("Launcher", "Loading android libraries");
      linker::init();
-@@ -542,6 +545,7 @@ int main(int argc, char* argv[]) {
+@@ -542,6 +559,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
      Log::info("Launcher", "Loaded Minecraft library");
      Log::debug("Launcher", "Minecraft is at offset 0x%" PRIXPTR, (uintptr_t)MinecraftUtils::getLibraryBase(handle));
      base = MinecraftUtils::getLibraryBase(handle);
@@ -52,7 +62,7 @@ index f444827..b000000 100644
  
      if(!freeOnly.get()) {
          modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
-@@ -760,3 +763,59 @@ void readOptions() {
+@@ -752,3 +770,59 @@ void readOptions() {
  
      GameOptions::fullKeyboard = fullKeyboard;
  }
@@ -85,8 +95,8 @@ index f444827..b000000 100644
 +    parseOptions(properties);
 +
 +    bool changed = false;
-+    auto raiseInt = [&](auto& option, int value) {
-+        if(option.get() < value) {
++    auto seedInt = [&](const char* key, auto& option, int value) {
++        if(!optionExists(key)) {
 +            option.set(value);
 +            changed = true;
 +        }
@@ -98,11 +108,11 @@ index f444827..b000000 100644
 +        }
 +    };
 +
-+    raiseInt(viewDistance, Settings::high_distance_render_chunks);
-+    raiseInt(particleViewDistance, Settings::high_distance_particle_chunks);
-+    raiseInt(rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
-+    raiseInt(deferredViewDistance, Settings::high_distance_deferred_chunks);
-+    raiseInt(memoryTierOverride, Settings::high_distance_memory_tier);
++    seedInt("gfx_viewdistance", viewDistance, Settings::high_distance_render_chunks);
++    seedInt("gfx_particleviewdistance", particleViewDistance, Settings::high_distance_particle_chunks);
++    seedInt("raytracing_viewdistance", rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
++    seedInt("deferred_viewdistance", deferredViewDistance, Settings::high_distance_deferred_chunks);
++    seedInt("device_info_memory_tier_override", memoryTierOverride, Settings::high_distance_memory_tier);
 +    setBool(useMemoryTierOverride, true);
 +    setBool(showRenderDistanceWarning, false);
 +
@@ -113,11 +123,10 @@ index f444827..b000000 100644
 +    }
 +}
 diff --git a/mcpelauncher-client/src/settings.cpp b/mcpelauncher-client/src/settings.cpp
-index 8c78010..b000000 100644
+index 576948c..023cab0 100644
 --- a/mcpelauncher-client/src/settings.cpp
 +++ b/mcpelauncher-client/src/settings.cpp
-@@ -2,7 +2,8 @@
- #include <properties/property_list.h>
+@@ -3,6 +3,7 @@
  #include <properties/property.h>
  #include <mcpelauncher/path_helper.h>
  #include <fstream>
@@ -125,7 +134,7 @@ index 8c78010..b000000 100644
  
  std::optional<bool> Settings::enable_imgui = {};
  std::atomic<int> Settings::menubarsize = 0;
-@@ -24,6 +25,13 @@ std::string Settings::menubarFocusKey;
+@@ -26,6 +27,13 @@ std::string Settings::menubarFocusKey;
  bool Settings::fullscreen;
  bool Settings::vsync;
  
@@ -139,7 +148,7 @@ index 8c78010..b000000 100644
  char GameOptions::leftKey = 'A';
  char GameOptions::downKey = 'S';
  char GameOptions::rightKey = 'D';
-@@ -55,6 +62,21 @@ static properties::property<std::string> menubarFocusKey(settings, "menubarFocus
+@@ -59,6 +67,21 @@ static properties::property<std::string> menubarFocusKey(settings, "menubarFocus
  static properties::property<bool> fullscreen(settings, "fullscreen", /* default if not defined*/ false);
  static properties::property<bool> vsync(settings, "vsync", /* default if not defined*/ true);
  
@@ -161,7 +170,7 @@ index 8c78010..b000000 100644
  std::string Settings::getPath() {
      return PathHelper::getPrimaryDataDirectory() + "mcpelauncher-client-settings.txt";
  }
-@@ -91,6 +113,13 @@ void Settings::load() {
+@@ -92,6 +115,13 @@ void Settings::load() {
      Settings::menubarFocusKey = ::menubarFocusKey.get();
      Settings::fullscreen = ::fullscreen.get();
      Settings::vsync = ::vsync.get();
@@ -175,7 +184,7 @@ index 8c78010..b000000 100644
  }
  
  void Settings::save() {
-@@ -126,6 +155,13 @@ void Settings::save() {
+@@ -120,6 +150,13 @@ void Settings::save() {
      ::fullscreen.set(Settings::fullscreen);
      ::vsync.set(Settings::vsync);
      if(propertiesFile) {
@@ -190,10 +199,10 @@ index 8c78010..b000000 100644
      }
  }
 diff --git a/mcpelauncher-client/src/settings.h b/mcpelauncher-client/src/settings.h
-index 83b9df2..b000000 100644
+index b377de8..5b87fd3 100644
 --- a/mcpelauncher-client/src/settings.h
 +++ b/mcpelauncher-client/src/settings.h
-@@ -25,6 +25,13 @@ struct Settings {
+@@ -27,6 +27,13 @@ struct Settings {
      static bool fullscreen;
      static bool vsync;
  

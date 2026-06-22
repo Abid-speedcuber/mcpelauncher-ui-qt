@@ -1,0 +1,37 @@
+--- a/mcpelauncher-client/src/main.cpp
++++ b/mcpelauncher-client/src/main.cpp
+@@ -246,6 +246,11 @@ int main(int argc, char* argv[]) {
+         MinecraftVersion::init(apkInfo.package, apkInfo.versionCode);
+     }
+     Log::info("Launcher", "Game version: %s", MinecraftVersion::getString().c_str());
++    if(!texturePatch.get() && MinecraftVersion::isAtLeast(1, 16, 210, 0) &&
++       !MinecraftVersion::isAtLeast(1, 18, 0, 0)) {
++        FakeEGL::enableTexturePatch = true;
++        Log::info("Launcher", "Automatically enabled the texture patch for this Minecraft version");
++    }
+ 
+     readOptions();
+ 
+@@ -753,6 +758,9 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
+     bool (*isAndroidChromebook)() = (decltype(isAndroidChromebook))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isAndroidChromebook");
+     bool (*isAndroidAmazon)() = (decltype(isAndroidAmazon))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isAndroidAmazon");
+     bool (*isEduMode)() = (decltype(isEduMode))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isEduMode");
++    // Older releases dereference the AppPlatform singleton in isEduMode before
++    // it is initialized. Calling that JNI export here crashes 1.16.x.
++    bool eduMode = MinecraftVersion::isAtLeast(1, 18, 0, 0) && isEduMode && isEduMode();
+ 
+     if(isAndroidTrial && isAndroidTrial()) {
+         Log::info("Launcher", "Detected Trial build");
+@@ -763,10 +771,10 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
+     if(isAndroidAmazon && isAndroidAmazon()) {
+         Log::info("Launcher", "Detected Amazon build");
+     }
+-    if(isEduMode && isEduMode()) {
++    if(eduMode) {
+         Log::info("Launcher", "Detected Education build");
+     }
+-    if(freeOnly.get() && !(isAndroidTrial && isAndroidTrial()) && !(isAndroidAmazon && isAndroidAmazon()) && !(isEduMode && isEduMode())) {
++    if(freeOnly.get() && !(isAndroidTrial && isAndroidTrial()) && !(isAndroidAmazon && isAndroidAmazon()) && !eduMode) {
+         Log::error("Launcher", "Something went wrong");
+         return 1;
+     }

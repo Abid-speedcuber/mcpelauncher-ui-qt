@@ -3,14 +3,10 @@ From: Abid speedcuber <abid-speedcuber@users.noreply.github.com>
 Date: Sat, 6 Jun 2026 12:50:00 +0600
 Subject: [PATCH] Force high simulation distance options
 
----
- src/main.cpp     | 167 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- src/settings.cpp |   4 ++
- src/settings.h   |   1 +
- 3 files changed, 170 insertions(+), 2 deletions(-)
 
+---
 diff --git a/mcpelauncher-client/src/main.cpp b/mcpelauncher-client/src/main.cpp
-index 2215aa7..28cdee5 100644
+index 9a678f0..2e82a42 100644
 --- a/mcpelauncher-client/src/main.cpp
 +++ b/mcpelauncher-client/src/main.cpp
 @@ -43,6 +43,8 @@
@@ -22,7 +18,7 @@ index 2215aa7..28cdee5 100644
  #include <unistd.h>
  #include <simpleipc/client/service_client.h>
  #include <daemon_utils/auto_shutdown_service.h>
-@@ -121,6 +123,7 @@ static void saveOptions(properties::property_list& properties) {
+@@ -135,6 +137,7 @@ static bool optionExists(const char* key) {
  void readOptions();
  void applyHighDistanceOptions();
  void disableChromebookDetection(void* handle);
@@ -30,7 +26,7 @@ index 2215aa7..28cdee5 100644
  
  int main(int argc, char* argv[]) {
      if(argc == 2 && argv[1][0] != '-') {
-@@ -546,6 +549,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
+@@ -560,6 +563,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
      Log::debug("Launcher", "Minecraft is at offset 0x%" PRIXPTR, (uintptr_t)MinecraftUtils::getLibraryBase(handle));
      base = MinecraftUtils::getLibraryBase(handle);
      disableChromebookDetection(handle);
@@ -38,18 +34,24 @@ index 2215aa7..28cdee5 100644
  
      if(!freeOnly.get()) {
          modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
-@@ -769,6 +773,162 @@ void disableChromebookDetection(void* handle) {
+@@ -783,6 +787,117 @@ void disableChromebookDetection(void* handle) {
  #endif
  }
  
 +static bool makeMinecraftMemoryWritable(uintptr_t address, size_t size, int protection) {
 +#if defined(__i386__) || defined(__x86_64__)
++    if(size == 0 || address + size < address)
++        return false;
++
 +    long pageSize = sysconf(_SC_PAGESIZE);
 +    if(pageSize <= 0)
 +        return false;
 +
 +    auto page = address & ~(static_cast<uintptr_t>(pageSize) - 1);
-+    auto pageEnd = (address + size + pageSize - 1) & ~(static_cast<uintptr_t>(pageSize) - 1);
++    auto end = address + size;
++    if(end + static_cast<uintptr_t>(pageSize) - 1 < end)
++        return false;
++    auto pageEnd = (end + static_cast<uintptr_t>(pageSize) - 1) & ~(static_cast<uintptr_t>(pageSize) - 1);
 +    return mprotect(reinterpret_cast<void*>(page), pageEnd - page, protection) == 0;
 +#else
 +    (void)address;
@@ -59,10 +61,45 @@ index 2215aa7..28cdee5 100644
 +#endif
 +}
 +
++static bool isMinecraftMemoryReadable(uintptr_t address, size_t size) {
++#if defined(__i386__) || defined(__x86_64__)
++    if(size == 0 || address + size < address)
++        return false;
++
++    std::ifstream maps("/proc/self/maps");
++    std::string line;
++    while(std::getline(maps, line)) {
++        auto dash = line.find('-');
++        auto space = line.find(' ', dash + 1);
++        if(dash == std::string::npos || space == std::string::npos || space + 1 >= line.size())
++            continue;
++
++        try {
++            auto start = static_cast<uintptr_t>(std::stoull(line.substr(0, dash), nullptr, 16));
++            auto end = static_cast<uintptr_t>(std::stoull(line.substr(dash + 1, space - dash - 1), nullptr, 16));
++            if(line[space + 1] == 'r' && address >= start && address + size <= end)
++                return true;
++        } catch(...) {
++            continue;
++        }
++    }
++    return false;
++#else
++    (void)address;
++    (void)size;
++    return false;
++#endif
++}
++
 +static bool patchMinecraftBytes(void* handle, uintptr_t offset, const unsigned char* expected, const unsigned char* replacement, size_t size, const char* name) {
 +#if defined(__i386__) || defined(__x86_64__)
 +    auto base = reinterpret_cast<uintptr_t>(MinecraftUtils::getLibraryBase(handle));
 +    auto address = base + offset;
++    if(address < base || !isMinecraftMemoryReadable(address, size)) {
++        Log::warn("Launcher", "Skipped %s patch: target address 0x%zx is not mapped/readable", name, static_cast<size_t>(offset));
++        return false;
++    }
++
 +    if(std::memcmp(reinterpret_cast<void*>(address), expected, size) != 0) {
 +        Log::warn("Launcher", "Skipped %s patch: byte pattern mismatch at 0x%zx", name, static_cast<size_t>(offset));
 +        return false;
@@ -100,89 +137,6 @@ index 2215aa7..28cdee5 100644
 +    return chunks;
 +}
 +
-+static int highSimulationOptionCount(void*) {
-+    return ((normalizedHighSimulationChunks() - 4) / 2) + 1;
-+}
-+
-+static int highSimulationChunksFromIndex(int index) {
-+    int count = highSimulationOptionCount(nullptr);
-+    if(index < 0)
-+        index = 0;
-+    if(index >= count)
-+        index = count - 1;
-+    return 4 + (index * 2);
-+}
-+
-+static int* getSimulationDistanceSetting(void* provider) {
-+    if(provider == nullptr)
-+        return nullptr;
-+
-+    auto wrapper = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(provider) + 0x50);
-+    if(wrapper == 0)
-+        return nullptr;
-+
-+    auto settings = *reinterpret_cast<uintptr_t*>(wrapper + 0x10);
-+    if(settings == 0)
-+        settings = wrapper + 0x18;
-+
-+    return reinterpret_cast<int*>(settings + 0x310);
-+}
-+
-+static int highSimulationCurrentIndex(void* provider) {
-+    int* setting = getSimulationDistanceSetting(provider);
-+    int chunks = setting != nullptr ? *setting : Settings::high_distance_simulation_chunks;
-+    if(chunks < 4)
-+        chunks = 4;
-+    if(chunks > normalizedHighSimulationChunks())
-+        chunks = normalizedHighSimulationChunks();
-+    if((chunks % 2) != 0)
-+        --chunks;
-+    return (chunks - 4) / 2;
-+}
-+
-+static void highSimulationSetIndex(void* provider, int index) {
-+    int* setting = getSimulationDistanceSetting(provider);
-+    if(setting == nullptr) {
-+        Log::warn("Launcher", "Simulation distance provider hook could not find the LevelData setting");
-+        return;
-+    }
-+
-+    int chunks = highSimulationChunksFromIndex(index);
-+    *setting = chunks;
-+    Log::info("Launcher", "Simulation distance provider hook set distance to %d chunks", chunks);
-+}
-+
-+static bool patchMinecraftPointer(void* handle, uintptr_t offset, uintptr_t expectedOffset, void* replacement, const char* name) {
-+#if defined(__i386__) || defined(__x86_64__)
-+    auto base = reinterpret_cast<uintptr_t>(MinecraftUtils::getLibraryBase(handle));
-+    auto address = base + offset;
-+    auto expected = reinterpret_cast<void*>(base + expectedOffset);
-+    auto current = *reinterpret_cast<void**>(address);
-+    if(current != expected) {
-+        Log::warn("Launcher", "Skipped %s hook: pointer mismatch at 0x%zx (current=%p expected=%p)",
-+                  name, static_cast<size_t>(offset), current, expected);
-+        return false;
-+    }
-+
-+    if(!makeMinecraftMemoryWritable(address, sizeof(void*), PROT_READ | PROT_WRITE)) {
-+        Log::warn("Launcher", "Failed to make Minecraft data writable for %s hook", name);
-+        return false;
-+    }
-+
-+    *reinterpret_cast<void**>(address) = replacement;
-+    makeMinecraftMemoryWritable(address, sizeof(void*), PROT_READ);
-+    Log::info("Launcher", "Applied %s hook at 0x%zx", name, static_cast<size_t>(offset));
-+    return true;
-+#else
-+    (void)handle;
-+    (void)offset;
-+    (void)expectedOffset;
-+    (void)replacement;
-+    (void)name;
-+    return false;
-+#endif
-+}
-+
 +void forceHighSimulationDistance(void* handle) {
 +    if(!Settings::enable_high_distance_options || Settings::high_distance_simulation_chunks <= 8 || Settings::high_distance_simulation_chunks > 127)
 +        return;
@@ -191,17 +145,14 @@ index 2215aa7..28cdee5 100644
 +    unsigned char replacement[] = {0xb8, static_cast<unsigned char>(Settings::high_distance_simulation_chunks), 0x00, 0x00, 0x00, 0x90};
 +    patchMinecraftBytes(handle, 0xb954be7, expected, replacement, sizeof(expected), "simulation distance max");
 +    patchMinecraftBytes(handle, 0xa3ecb15, expected, replacement, sizeof(expected), "OreUI simulation distance options max");
-+    patchMinecraftPointer(handle, 0x14a215a8, 0xb957230, reinterpret_cast<void*>(highSimulationOptionCount), "simulation distance option count");
-+    patchMinecraftPointer(handle, 0x14a215b0, 0xb957280, reinterpret_cast<void*>(highSimulationCurrentIndex), "simulation distance current index");
-+    patchMinecraftPointer(handle, 0x14a215b8, 0xb957390, reinterpret_cast<void*>(highSimulationSetIndex), "simulation distance setter");
-+    Log::info("Launcher", "Simulation distance provider hook exposes %d options up to %d chunks",
-+              highSimulationOptionCount(nullptr), normalizedHighSimulationChunks());
++    Log::info("Launcher", "Simulation distance max patches expose options up to %d chunks",
++              normalizedHighSimulationChunks());
 +}
 +
  void applyHighDistanceOptions() {
      if(!Settings::enable_high_distance_options)
          return;
-@@ -778,6 +938,7 @@ void applyHighDistanceOptions() {
+@@ -792,6 +907,7 @@ void applyHighDistanceOptions() {
      properties::property<int> particleViewDistance(properties, "gfx_particleviewdistance", 0);
      properties::property<int> rayTracingViewDistance(properties, "raytracing_viewdistance", 0);
      properties::property<int> deferredViewDistance(properties, "deferred_viewdistance", 0);
@@ -209,12 +160,12 @@ index 2215aa7..28cdee5 100644
      properties::property<int> memoryTierOverride(properties, "device_info_memory_tier_override", 0);
      properties::property<bool> useMemoryTierOverride(properties, "device_info_use_memory_tier_override", false);
      properties::property<bool> showRenderDistanceWarning(properties, "show_render_distance_warning_modal", false);
-@@ -802,13 +963,15 @@ void applyHighDistanceOptions() {
-     raiseInt(particleViewDistance, Settings::high_distance_particle_chunks);
-     raiseInt(rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
-     raiseInt(deferredViewDistance, Settings::high_distance_deferred_chunks);
-+    raiseInt(simDistance, Settings::high_distance_simulation_chunks);
-     raiseInt(memoryTierOverride, Settings::high_distance_memory_tier);
+@@ -816,13 +932,15 @@ void applyHighDistanceOptions() {
+     seedInt("gfx_particleviewdistance", particleViewDistance, Settings::high_distance_particle_chunks);
+     seedInt("raytracing_viewdistance", rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
+     seedInt("deferred_viewdistance", deferredViewDistance, Settings::high_distance_deferred_chunks);
++    seedInt("simulationdistance", simDistance, Settings::high_distance_simulation_chunks);
+     seedInt("device_info_memory_tier_override", memoryTierOverride, Settings::high_distance_memory_tier);
      setBool(useMemoryTierOverride, true);
      setBool(showRenderDistanceWarning, false);
  
@@ -264,7 +215,7 @@ index 023cab0..29ec6b2 100644
  
          settings.save(propertiesFile);
 diff --git a/mcpelauncher-client/src/settings.h b/mcpelauncher-client/src/settings.h
-index 5b87fd3..b8cdb5f 100644
+index 5b87fd3..980ba51 100644
 --- a/mcpelauncher-client/src/settings.h
 +++ b/mcpelauncher-client/src/settings.h
 @@ -32,6 +32,7 @@ struct Settings {

@@ -6,6 +6,7 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.llvm21
 command: mcpelauncher-ui-qt
 finish-args:
+  - --allow=multiarch
   - --share=network
   - --socket=fallback-x11
   - --socket=wayland
@@ -18,6 +19,21 @@ finish-args:
   - --env=BROWSER=xdg-open
   - --env=QT_QUICK_CONTROLS_HOVER_ENABLED=1
   - --env=QML_DISABLE_DISK_CACHE=1
+add-extensions:
+  org.freedesktop.Platform.Compat.i386:
+    directory: lib/i386-linux-gnu
+    version: "25.08"
+  org.freedesktop.Platform.GL32:
+    directory: lib/i386-linux-gnu/GL
+    version: "1.4"
+    versions: "25.08;25.08-extra;1.4"
+    subdirectories: true
+    no-autodownload: true
+    autodelete: false
+    add-ld-path: lib
+    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d
+    download-if: active-gl-driver
+    enable-if: active-gl-driver
 modules:
   - name: protobuf
     sources:
@@ -79,6 +95,12 @@ modules:
         path: patches/mcpelauncher-client-egl-renderer-spoof.patch
       - type: patch
         path: patches/mcpelauncher-client-distance-diagnostics.patch
+      - type: patch
+        path: patches/mcpelauncher-client-pthread-sigmask.patch
+      - type: patch
+        path: patches/mcpelauncher-client-storage-space.patch
+      - type: patch
+        path: patches/mcpelauncher-client-old-version-compat.patch
       - type: git
         url: https://github.com/gabomdq/SDL_GameControllerDB
         commit: bd4ef5de42d50480c5be6bd54de164140a62f384
@@ -91,6 +113,16 @@ modules:
         commands:
           - mkdir nlohmann_json_ext
           - cd nlohmann_json_ext && unzip ../nlohmann_json_ext.zip
+
+  - name: mcpelauncher-client32-binary
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 mcpelauncher-client32 /app/bin/mcpelauncher-client32
+      - install -Dm644 ld.so.conf /app/etc/ld.so.conf
+      - mkdir -p /app/lib/i386-linux-gnu/GL
+    sources:
+      - type: dir
+        path: generated/client32
 
   - name: mcpelauncher-ui-qt
     buildsystem: cmake-ninja
