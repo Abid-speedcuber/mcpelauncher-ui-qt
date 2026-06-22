@@ -34,7 +34,7 @@ index 9a678f0..2e82a42 100644
  
      if(!freeOnly.get()) {
          modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
-@@ -783,6 +787,117 @@ void disableChromebookDetection(void* handle) {
+@@ -783,6 +787,183 @@ void disableChromebookDetection(void* handle) {
  #endif
  }
  
@@ -126,6 +126,61 @@ index 9a678f0..2e82a42 100644
 +#endif
 +}
 +
++static bool patchUniqueMinecraftSignature(void* handle, const unsigned char* signature, size_t signatureSize,
++                                          size_t patchOffset, const unsigned char* expected,
++                                          const unsigned char* replacement, size_t patchSize, const char* name) {
++#if defined(__i386__) || defined(__x86_64__)
++    auto base = reinterpret_cast<uintptr_t>(MinecraftUtils::getLibraryBase(handle));
++    uintptr_t match = 0;
++    size_t matchCount = 0;
++    std::ifstream maps("/proc/self/maps");
++    std::string line;
++    while(std::getline(maps, line)) {
++        auto dash = line.find('-');
++        auto space = line.find(' ', dash + 1);
++        if(dash == std::string::npos || space == std::string::npos || space + 4 >= line.size() ||
++           line[space + 3] != 'x' || line.find("libminecraftpe.so") == std::string::npos)
++            continue;
++
++        uintptr_t start;
++        uintptr_t end;
++        try {
++            start = static_cast<uintptr_t>(std::stoull(line.substr(0, dash), nullptr, 16));
++            end = static_cast<uintptr_t>(std::stoull(line.substr(dash + 1, space - dash - 1), nullptr, 16));
++        } catch(...) {
++            continue;
++        }
++        if(end <= start || signatureSize > end - start)
++            continue;
++
++        auto bytes = reinterpret_cast<const unsigned char*>(start);
++        size_t limit = static_cast<size_t>(end - start) - signatureSize;
++        for(size_t i = 0; i <= limit; ++i) {
++            if(bytes[i] == signature[0] && std::memcmp(bytes + i, signature, signatureSize) == 0) {
++                match = start + i + patchOffset;
++                ++matchCount;
++            }
++        }
++    }
++
++    if(matchCount != 1 || match < base) {
++        Log::warn("Launcher", "Skipped %s patch: signature matched %zu locations", name, matchCount);
++        return false;
++    }
++    return patchMinecraftBytes(handle, match - base, expected, replacement, patchSize, name);
++#else
++    (void)handle;
++    (void)signature;
++    (void)signatureSize;
++    (void)patchOffset;
++    (void)expected;
++    (void)replacement;
++    (void)patchSize;
++    (void)name;
++    return false;
++#endif
++}
++
 +static int normalizedHighSimulationChunks() {
 +    int chunks = Settings::high_distance_simulation_chunks;
 +    if(chunks < 4)
@@ -143,16 +198,27 @@ index 9a678f0..2e82a42 100644
 +
 +    unsigned char expected[] = {0xff, 0x90, 0x70, 0x07, 0x00, 0x00};
 +    unsigned char replacement[] = {0xb8, static_cast<unsigned char>(Settings::high_distance_simulation_chunks), 0x00, 0x00, 0x00, 0x90};
-+    patchMinecraftBytes(handle, 0xb954be7, expected, replacement, sizeof(expected), "simulation distance max");
-+    patchMinecraftBytes(handle, 0xa3ecb15, expected, replacement, sizeof(expected), "OreUI simulation distance options max");
-+    Log::info("Launcher", "Simulation distance max patches expose options up to %d chunks",
++    unsigned char simulationMaxSignature[] = {
++        0xff, 0x90, 0x70, 0x07, 0x00, 0x00,
++        0x48, 0x89, 0x44, 0x24, 0x48, 0x48, 0x8d, 0x84, 0x24, 0x00, 0x01, 0x00, 0x00
++    };
++    unsigned char oreUiMaxSignature[] = {
++        0xff, 0x90, 0x70, 0x07, 0x00, 0x00,
++        0x89, 0xc5, 0x0f, 0x57, 0xc0, 0x0f, 0x11, 0x44, 0x24, 0x38
++    };
++    bool patchedSimulation = patchUniqueMinecraftSignature(handle, simulationMaxSignature, sizeof(simulationMaxSignature),
++                                                            0, expected, replacement, sizeof(expected), "simulation distance max");
++    bool patchedOreUi = patchUniqueMinecraftSignature(handle, oreUiMaxSignature, sizeof(oreUiMaxSignature),
++                                                       0, expected, replacement, sizeof(expected), "OreUI simulation distance options max");
++    Log::info("Launcher", "Simulation distance patches: game=%s OreUI=%s max=%d chunks",
++              patchedSimulation ? "applied" : "skipped", patchedOreUi ? "applied" : "skipped",
 +              normalizedHighSimulationChunks());
 +}
 +
  void applyHighDistanceOptions() {
      if(!Settings::enable_high_distance_options)
          return;
-@@ -792,6 +907,7 @@ void applyHighDistanceOptions() {
+@@ -792,6 +973,7 @@ void applyHighDistanceOptions() {
      properties::property<int> particleViewDistance(properties, "gfx_particleviewdistance", 0);
      properties::property<int> rayTracingViewDistance(properties, "raytracing_viewdistance", 0);
      properties::property<int> deferredViewDistance(properties, "deferred_viewdistance", 0);
@@ -160,7 +226,7 @@ index 9a678f0..2e82a42 100644
      properties::property<int> memoryTierOverride(properties, "device_info_memory_tier_override", 0);
      properties::property<bool> useMemoryTierOverride(properties, "device_info_use_memory_tier_override", false);
      properties::property<bool> showRenderDistanceWarning(properties, "show_render_distance_warning_modal", false);
-@@ -816,13 +932,15 @@ void applyHighDistanceOptions() {
+@@ -816,13 +998,15 @@ void applyHighDistanceOptions() {
      seedInt("gfx_particleviewdistance", particleViewDistance, Settings::high_distance_particle_chunks);
      seedInt("raytracing_viewdistance", rayTracingViewDistance, Settings::high_distance_raytracing_chunks);
      seedInt("deferred_viewdistance", deferredViewDistance, Settings::high_distance_deferred_chunks);

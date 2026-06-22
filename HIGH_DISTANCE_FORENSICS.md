@@ -347,11 +347,16 @@ Render distance high, sim still capped at 8:
 simulationdistance=22 in DistanceDiag, UI still 8:
   Saved option is high, but UI options list is still capped. Re-find OreUI path.
 
-Skipped simulation distance max patch: byte pattern mismatch:
-  Minecraft native code moved or changed. Re-find the provider max call.
+Skipped simulation distance max patch: signature matched 0 locations:
+  Minecraft changed the provider call sequence. Re-find and extend the full
+  signature, then verify it is unique in every available test binary.
 
-Skipped OreUI simulation distance options max patch: byte pattern mismatch:
-  Minecraft native OreUI constructor moved or changed. Re-find the facet path.
+Skipped OreUI simulation distance options max patch: signature matched 0 locations:
+  Minecraft changed the OreUI call sequence. Re-find the facet path.
+
+signature matched more than 1 location:
+  Do not patch any candidate. Strengthen the surrounding signature until it is
+  unique; patching every virtual call at vtable offset 0x770 is unsafe.
 
 Skipped simulation distance option count/current/setter hook: pointer mismatch:
   Provider vtable moved or changed. Re-find provider vtable slots.
@@ -363,11 +368,12 @@ Build patch says malformed patch:
 
 ## Important Caveat
 
-These offsets are not Minecraft-version neutral. They are guarded by byte/pointer
-checks so they should fail loudly instead of writing blindly, but future Bedrock
-updates can require rediscovery.
+The original offsets were not Minecraft-version neutral. The current x86_64
+implementation instead scans for two complete, unique instruction signatures.
+It was verified against `1.26.22.1` and `1.26.31.1`: the old offsets
+`0xb954be7`/`0xa3ecb15` moved to `0xbe685a7`/`0xa8ffe85`, while the signatures
+remained stable. Future compiler changes can still require rediscovery.
 
 Launcher updates are a different risk: the patch files may fail to apply if
-upstream source changes nearby. If they still apply and compile, the native
-Minecraft offsets remain the main fragile part.
-
+upstream source changes nearby. If they still apply and compile, Minecraft code
+generation around the two scanned call sites remains the main fragile part.

@@ -106,18 +106,19 @@ rg -n "Applied .*patch|Applied .*hook|OreUI simulation|Simulation distance provi
 Expected lines include:
 
 ```text
-Applied simulation distance max patch at 0xb954be7
-Applied OreUI simulation distance options max patch at 0xa3ecb15
-Simulation distance provider hook exposes 10 options up to 22 chunks
+Applied simulation distance max patch at 0xbe685a7
+Applied OreUI simulation distance options max patch at 0xa8ffe85
+Simulation distance patches: game=applied OreUI=applied max=22 chunks
 options gfx_viewdistance=448 ... simulationdistance=22
 ```
 
 ## Maintenance Notes
 
-The native offsets are version-specific. They were found for Minecraft Bedrock
-`1.26.22.1` x86_64. If Mojang updates `libminecraftpe.so`, the byte patterns or
-vtable addresses may move. In that case the launcher should log a skipped patch
-or pointer mismatch instead of blindly writing into the wrong place.
+The simulation patch does not use fixed native offsets. It scans executable
+Minecraft mappings for full instruction signatures around the game and OreUI
+maximum-distance calls. The signatures are unique in the tested x86_64 builds
+`1.26.22.1` and `1.26.31.1`, despite both calls moving. If a signature is absent
+or ambiguous after an update, the launcher skips it instead of writing blindly.
 
 The relevant patch files are:
 
@@ -126,4 +127,3 @@ The relevant patch files are:
 - `packaging/patches/mcpelauncher-client-flagship-device-spoof.patch`
 - `packaging/patches/mcpelauncher-client-linux-hardware-spoof.patch`
 - `packaging/patches/mcpelauncher-client-egl-renderer-spoof.patch`
-
