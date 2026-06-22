@@ -7,6 +7,7 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QFileInfo>
+#include "highdistanceassets.h"
 
 #ifndef LAUNCHER_VERSIONDB_URL
 #define LAUNCHER_VERSIONDB_URL "https://raw.githubusercontent.com/minecraft-linux/mcpelauncher-versiondb/master"
@@ -40,6 +41,7 @@ void VersionManager::loadVersions() {
             ver->dataDirectory = settings.value("dataDirectory").toString();
             ver->versionName = settings.value("versionName").toString();
             m_versions[group] = ver;
+            applyHighDistanceAssetPatches(getDirectoryFor(ver));
         } else {
             settings.endArray();
             // Migrate previous format
@@ -57,6 +59,7 @@ void VersionManager::loadVersions() {
                         ver->codes[QString::fromStdString(abi.first)] = versionCode;
                     }
                 }
+                applyHighDistanceAssetPatches(getDirectoryFor(ver));
             }
         }
         

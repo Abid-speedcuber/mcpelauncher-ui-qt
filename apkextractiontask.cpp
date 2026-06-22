@@ -11,6 +11,7 @@
 #include <sstream>
 #include "versionmanager.h"
 #include "supportedandroidabis.h"
+#include "highdistanceassets.h"
 
 ApkExtractionTask::ApkExtractionTask(QObject *parent) : QThread(parent) {
     connect(this, &QThread::started, this, &ApkExtractionTask::emitActiveChanged);
@@ -53,25 +54,6 @@ static bool mergeDirsRecusive(QString from, QString to) {
         }
         return false;
     }
-}
-
-static void applyHighDistanceAssetProfile(QString const& versionDir) {
-    auto configPath = versionDir + "/assets/assets/renderer/render_distance_configs/render_distance_configuration.android.json";
-    if (!QFile::exists(configPath))
-        return;
-
-    QFile config(configPath);
-    if (!config.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-        qWarning() << "Could not patch Android render distance profile:" << configPath << config.errorString();
-        return;
-    }
-
-    config.write("{\n"
-                 "  \"deferred_render_distance_configuration\": {\n"
-                 "    \"file\": \"lods/render_distance_configuration_high.json\"\n"
-                 "  }\n"
-                 "}\n");
-    qDebug() << "Patched Android render distance profile to high:" << configPath;
 }
 
 void ApkExtractionTask::run() {
@@ -167,7 +149,7 @@ void ApkExtractionTask::run() {
         if (mergeDirsRecusive(dir.path(), targetDir)) {
             dir.setAutoRemove(false);
         }
-        applyHighDistanceAssetProfile(targetDir);
+        applyHighDistanceAssetPatches(targetDir);
         emit versionInformationObtained(QDir(targetDir).dirName(), QString::fromStdString(apkInfo.versionName), apkInfo.versionCode);
     } catch (std::exception& e) {
         m_versionName.clear();

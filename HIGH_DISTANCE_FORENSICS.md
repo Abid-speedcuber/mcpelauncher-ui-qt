@@ -345,7 +345,10 @@ Render distance high, sim still capped at 8:
   patched or moved.
 
 simulationdistance=22 in DistanceDiag, UI still 8:
-  Saved option is high, but UI options list is still capped. Re-find OreUI path.
+  Saved option is high, but UI options may be using the HBUI JavaScript fallback.
+  In 1.26.31 the fallback is `[4,6,8]` whenever the native facet has at most
+  one entry. `highdistanceassets.h` expands it through 22 during import and
+  when existing versions are loaded.
 
 Skipped simulation distance max patch: signature matched 0 locations:
   Minecraft changed the provider call sequence. Re-find and extend the full
