@@ -41,12 +41,14 @@ fi
 mkdir -p "$WORKTREE/repo"
 rsync -a --delete repo/ "$WORKTREE/repo/"
 cp mcpelauncher.flatpakrepo "$WORKTREE/"
+cp mcpelauncher.flatpakref "$WORKTREE/"
 
 cat > "$WORKTREE/index.html" <<'EOF'
 <!doctype html>
 <meta charset="utf-8">
 <title>Minecraft Pocket Edition Launcher Flatpak repo</title>
 <h1>Minecraft Pocket Edition Launcher Flatpak repo</h1>
+<p><a href="mcpelauncher.flatpakref">Install Minecraft Pocket Edition Launcher</a></p>
 <p><a href="mcpelauncher.flatpakrepo">Download the Flatpak remote file</a></p>
 EOF
 

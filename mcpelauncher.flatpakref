@@ -1,0 +1,8 @@
+[Flatpak Ref]
+Name=io.github.Abid_speedcuber.mcpelauncher
+Branch=master
+Title=Minecraft Pocket Edition Launcher
+Url=https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/repo/
+IsRuntime=false
+SuggestRemoteName=mcpelauncher
+RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo

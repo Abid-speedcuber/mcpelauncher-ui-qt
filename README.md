@@ -133,6 +133,12 @@ flatpak remote-add --user --if-not-exists mcpelauncher https://Abid-speedcuber.g
 flatpak install --user mcpelauncher io.github.Abid_speedcuber.mcpelauncher
 ```
 
+For a one-command installation, use the published Flatpak reference:
+
+```sh
+flatpak install --user https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher.flatpakref
+```
+
 For a tagged public release with both update repo publishing and GitHub Release
 assets, commit your changes and run:
 
