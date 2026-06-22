@@ -40,6 +40,8 @@ void VersionManager::loadVersions() {
             ver->directory = group;
             ver->dataDirectory = settings.value("dataDirectory").toString();
             ver->versionName = settings.value("versionName").toString();
+            ver->instanceName = settings.value("instanceName", ver->versionName).toString();
+            ver->customNamed = settings.value("customNamed", false).toBool();
             m_versions[group] = ver;
             applyHighDistanceAssetPatches(getDirectoryFor(ver));
         } else {
@@ -54,6 +56,8 @@ void VersionManager::loadVersions() {
                 ver->directory = group;
                 ver->dataDirectory = settings.value("dataDirectory").toString();
                 ver->versionName = settings.value("versionName").toString();
+                ver->instanceName = settings.value("instanceName", ver->versionName).toString();
+                ver->customNamed = settings.value("customNamed", false).toBool();
                 for (auto &&abi : SupportedAndroidAbis::getAbis()) {
                     if (QFile(getDirectoryFor(ver->directory) + "/lib/" + QString::fromStdString(abi.first) + "/libminecraftpe.so").exists()) {
                         ver->codes[QString::fromStdString(abi.first)] = versionCode;
@@ -78,6 +82,8 @@ void VersionManager::saveVersions() {
         settings.setValue("versionName", ver->versionName);
         settings.setValue("versionCode", ver->versionCode());
         settings.setValue("dataDirectory", ver->dataDirectory);
+        settings.setValue("instanceName", ver->instanceName);
+        settings.setValue("customNamed", ver->customNamed);
         auto size = ver->codes.size();
         settings.beginWriteArray("codes", size);
         QHash<QString, int>::const_iterator it = ver->codes.constBegin();
@@ -140,9 +146,11 @@ QString VersionManager::createUniqueDirectoryName(QString desiredName) const {
     return candidate;
 }
 
-void VersionManager::addVersion(QString directory, QString versionName, int versionCode, QString dataDirectory) {
+void VersionManager::addVersion(QString directory, QString versionName, int versionCode, QString dataDirectory,
+                                QString instanceName, bool customNamed) {
     auto& ver = m_versions[directory];
-    if (ver == nullptr)
+    bool isNew = ver == nullptr;
+    if (isNew)
         ver = new VersionInfo(this);
     ver->directory = directory;
     if (dataDirectory.isEmpty() && ver->dataDirectory.isEmpty())
@@ -150,6 +158,12 @@ void VersionManager::addVersion(QString directory, QString versionName, int vers
     if (!dataDirectory.isEmpty())
         ver->dataDirectory = dataDirectory;
     ver->versionName = versionName;
+    if (isNew) {
+        ver->customNamed = customNamed && !instanceName.trimmed().isEmpty();
+        ver->instanceName = ver->customNamed ? instanceName.trimmed() : versionName;
+    } else if (!ver->customNamed) {
+        ver->instanceName = versionName;
+    }
     ver->codes.clear();
     for (auto &&abi : SupportedAndroidAbis::getAbis()) {
         auto && it = ver->codes.constFind(QString::fromStdString(abi.first));
@@ -158,6 +172,7 @@ void VersionManager::addVersion(QString directory, QString versionName, int vers
         }
     }
     saveVersions();
+    emit ver->metadataChanged();
     emit versionListChanged();
 }
 
@@ -183,20 +198,25 @@ QString VersionManager::getBehaviorPacksDirectoryFor(VersionInfo* version) {
     return QDir(getDataDirectoryFor(version)).filePath("games/com.mojang/behavior_packs");
 }
 
-static void copyDirectoryRecursive(QString const& from, QString const& to) {
+static bool copyDirectoryRecursive(QString const& from, QString const& to) {
     QDir source(from);
     if (!source.exists())
-        return;
-    QDir().mkpath(to);
+        return true;
+    if (!QDir().mkpath(to))
+        return false;
     for (auto const& entry : source.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
         QString target = QDir(to).filePath(entry.fileName());
         if (entry.isDir()) {
-            copyDirectoryRecursive(entry.absoluteFilePath(), target);
+            if (!copyDirectoryRecursive(entry.absoluteFilePath(), target))
+                return false;
         } else if (entry.isFile()) {
-            QFile::remove(target);
-            QFile::copy(entry.absoluteFilePath(), target);
+            if (QFileInfo::exists(target) && !QFile::remove(target))
+                return false;
+            if (!QFile::copy(entry.absoluteFilePath(), target))
+                return false;
         }
     }
+    return true;
 }
 
 void VersionManager::deleteVersion(VersionInfo* version, bool removeData) {
@@ -234,8 +254,72 @@ VersionInfo* VersionManager::duplicateVersion(VersionInfo* version) {
     QString newDataDir = QDir(instancesDir).filePath(newDirectory + "/data");
     copyDirectoryRecursive(getDirectoryFor(version), newVersionDir);
     copyDirectoryRecursive(getDataDirectoryFor(version), newDataDir);
-    addVersion(newDirectory, version->versionName + tr(" Copy"), version->versionCode(), newDataDir);
+    addVersion(newDirectory, version->versionName, version->versionCode(), newDataDir,
+               version->instanceName + tr(" Copy"), true);
     return m_versions.value(newDirectory, nullptr);
+}
+
+bool VersionManager::renameVersion(VersionInfo* version, QString instanceName) {
+    if (!version)
+        return false;
+    instanceName = instanceName.trimmed();
+    if (instanceName.isEmpty())
+        return false;
+
+    QString baseName = sanitizeInstanceName(instanceName, version->versionName);
+    QString storageName = baseName;
+    int suffix = 2;
+    QString targetRoot;
+    do {
+        targetRoot = QDir(instancesDir).filePath(storageName);
+        if (!QFileInfo::exists(targetRoot))
+            break;
+        storageName = QString("%1-%2").arg(baseName).arg(suffix++);
+    } while (true);
+    QString targetData = QDir(targetRoot).filePath("data");
+    QString oldData = getDataDirectoryFor(version);
+    QString oldRoot = QFileInfo(oldData).dir().absolutePath();
+    bool dedicatedStorage = QFileInfo(oldRoot).dir().absolutePath() == QFileInfo(instancesDir).absoluteFilePath();
+
+    QDir().mkpath(instancesDir);
+    bool moved = false;
+    if (dedicatedStorage && QFileInfo::exists(oldRoot))
+        moved = QDir().rename(oldRoot, targetRoot);
+    if (!moved) {
+        bool copied = copyDirectoryRecursive(oldData, targetData);
+        if (!QFileInfo::exists(targetData))
+            copied = QDir().mkpath(targetData);
+        if (!copied) {
+            QDir(targetRoot).removeRecursively();
+            return false;
+        }
+        if (dedicatedStorage && QFileInfo::exists(oldRoot))
+            QDir(oldRoot).removeRecursively();
+    }
+
+    version->instanceName = instanceName;
+    version->customNamed = true;
+    version->dataDirectory = targetData;
+    saveVersions();
+    emit version->metadataChanged();
+    emit versionListChanged();
+    return true;
+}
+
+QString VersionManager::getIconPathFor(VersionInfo* version) {
+    if (!version)
+        return QString();
+    QString root = getDirectoryFor(version);
+    QStringList candidates = {
+        QDir(root).filePath("assets/icon.png"),
+        QDir(root).filePath("assets/assets/resource_packs/vanilla/pack_icon.png"),
+        QDir(root).filePath("assets/assets/resource_packs/oreui/pack_icon.png")
+    };
+    for (auto const& path : candidates) {
+        if (QFileInfo::exists(path))
+            return QUrl::fromLocalFile(path).toString();
+    }
+    return QString("qrc:/Resources/mcpelauncher-icon.svg");
 }
 
 bool VersionManager::openDirectory(QString path) {

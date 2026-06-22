@@ -6,7 +6,7 @@ Rectangle {
     property string subtitle: ""
     property alias content: container.data
 
-    color: "#282828"
+    color: "#07111f"
     Layout.fillWidth: true
     Layout.minimumHeight: contents.height
     z: 2
@@ -21,17 +21,14 @@ Rectangle {
             Layout.bottomMargin: subtitle.length > 0 ? 5 : 0
             text: title
             color: "#fff"
-            font {
-                bold: true
-                pointSize: 12
-                capitalization: Font.AllUppercase
-            }
+            font.bold: true
+            font.pointSize: 13
             Text {
                 anchors.top: parent.bottom
                 anchors.left: parent.left
                 text: subtitle
                 font.pointSize: 8
-                color: "#999"
+                color: "#8fa6bd"
             }
         }
 

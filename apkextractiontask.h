@@ -15,6 +15,8 @@ class ApkExtractionTask : public QThread {
     Q_PROPERTY(bool allowIncompatible READ allowIncompatible WRITE SetAllowIncompatible)
     Q_PROPERTY(QString versionName READ versionName WRITE setVersionName)
     Q_PROPERTY(QString targetDirectory READ targetDirectory WRITE setTargetDirectory)
+    Q_PROPERTY(QString instanceName READ instanceName WRITE setInstanceName)
+    Q_PROPERTY(bool customNamed READ customNamed WRITE setCustomNamed)
     Q_PROPERTY(QStringList allowedPackages READ allowedPackages WRITE setAllowedPackages)
 
     QMutex mutex;
@@ -23,6 +25,8 @@ class ApkExtractionTask : public QThread {
     bool m_allowIncompatible;
     QString m_versionName;
     QString m_targetDirectory;
+    QString m_instanceName;
+    bool m_customNamed = false;
     QStringList m_allowedPackages;
 
     void run() override;
@@ -77,6 +81,11 @@ public:
     void setTargetDirectory(QString targetDirectory) {
         m_targetDirectory = targetDirectory;
     }
+
+    QString instanceName() const { return m_instanceName; }
+    void setInstanceName(QString value) { m_instanceName = value; }
+    bool customNamed() const { return m_customNamed; }
+    void setCustomNamed(bool value) { m_customNamed = value; }
 
     QStringList allowedPackages() {
         return m_allowedPackages;

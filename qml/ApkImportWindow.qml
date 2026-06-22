@@ -14,9 +14,9 @@ Window {
     width: 320
     height: layout.implicitHeight + layout.anchors.topMargin + layout.anchors.bottomMargin
     flags: Qt.Dialog
-    title: "APK import"
+    title: qsTr("Add instance")
     visible: apkImportHelper.extractingApk
-    color: "#333"
+    color: "#07111f"
 
     property bool allowIncompatible: false
 
@@ -45,8 +45,65 @@ Window {
         onFinished: root.importFinished()
     }
 
+    Window {
+        id: nameWindow
+        width: 380
+        height: nameLayout.implicitHeight + 28
+        flags: Qt.Dialog
+        title: qsTr("Name instance")
+        color: "#07111f"
+
+        ColumnLayout {
+            id: nameLayout
+            anchors.fill: parent
+            anchors.margins: 14
+            spacing: 10
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Instance name")
+                color: "white"
+                font.bold: true
+            }
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Leave blank to use the Minecraft version name.")
+                color: "#8fa6bd"
+                wrapMode: Text.WordWrap
+            }
+            MTextField {
+                id: instanceNameField
+                Layout.fillWidth: true
+                placeholderText: qsTr("Optional name")
+                onAccepted: continueButton.clicked()
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                MButton {
+                    text: qsTr("Cancel")
+                    Layout.fillWidth: true
+                    onClicked: nameWindow.close()
+                }
+                MButton {
+                    id: continueButton
+                    text: qsTr("Choose APK")
+                    Layout.fillWidth: true
+                    onClicked: {
+                        var name = instanceNameField.text
+                        nameWindow.close()
+                        apkImportHelper.pickFile(name)
+                    }
+                }
+            }
+        }
+    }
+
     function pickFile() {
-        apkImportHelper.pickFile()
+        instanceNameField.text = ""
+        nameWindow.show()
+        nameWindow.raise()
+        nameWindow.requestActivate()
+        instanceNameField.forceActiveFocus()
     }
 
     function pickUpdate(versionInfo) {

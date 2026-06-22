@@ -21,8 +21,10 @@ public:
 class VersionInfo : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString directory MEMBER directory CONSTANT)
-    Q_PROPERTY(QString dataDirectory MEMBER dataDirectory CONSTANT)
-    Q_PROPERTY(QString versionName MEMBER versionName CONSTANT)
+    Q_PROPERTY(QString dataDirectory MEMBER dataDirectory NOTIFY metadataChanged)
+    Q_PROPERTY(QString versionName MEMBER versionName NOTIFY metadataChanged)
+    Q_PROPERTY(QString instanceName MEMBER instanceName NOTIFY metadataChanged)
+    Q_PROPERTY(bool customNamed MEMBER customNamed NOTIFY metadataChanged)
     Q_PROPERTY(int versionCode READ versionCode CONSTANT)
     Q_PROPERTY(QStringList archs READ archs CONSTANT)
     Q_PROPERTY(QList<CodeInfo*> codes READ getCodes CONSTANT)
@@ -30,15 +32,19 @@ public:
     QString directory;
     QString dataDirectory;
     QString versionName;
+    QString instanceName;
+    bool customNamed = false;
     QHash<QString, int> codes;
 
     VersionInfo(QObject* parent = nullptr) : QObject(parent) {}
-    VersionInfo(VersionInfo const& v) : directory(v.directory), dataDirectory(v.dataDirectory), versionName(v.versionName), codes(v.codes) {}
+    VersionInfo(VersionInfo const& v) : directory(v.directory), dataDirectory(v.dataDirectory), versionName(v.versionName), instanceName(v.instanceName), customNamed(v.customNamed), codes(v.codes) {}
 
     VersionInfo& operator=(VersionInfo const& v) {
         directory = v.directory;
         dataDirectory = v.dataDirectory;
         versionName = v.versionName;
+        instanceName = v.instanceName;
+        customNamed = v.customNamed;
         codes = v.codes;
         return *this;
     }
@@ -67,6 +73,9 @@ public:
         }
         return l;
     }
+
+signals:
+    void metadataChanged();
 };
 
 class VersionList : public QObject {
@@ -141,7 +150,8 @@ public:
 
     QString createUniqueDirectoryName(QString desiredName) const;
 
-    void addVersion(QString directory, QString versionName, int versionCode, QString dataDirectory = QString());
+    void addVersion(QString directory, QString versionName, int versionCode, QString dataDirectory = QString(),
+                    QString instanceName = QString(), bool customNamed = false);
 
     VersionList* versionList() { return &m_versionList; }
 
@@ -163,6 +173,10 @@ public slots:
     void removeVersion(VersionInfo* version, QStringList abis);
 
     VersionInfo* duplicateVersion(VersionInfo* version);
+
+    bool renameVersion(VersionInfo* version, QString instanceName);
+
+    QString getIconPathFor(VersionInfo* version);
 
     bool openDirectory(QString path);
 

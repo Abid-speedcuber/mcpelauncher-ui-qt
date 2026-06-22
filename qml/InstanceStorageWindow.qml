@@ -19,7 +19,7 @@ Window {
     height: 460
     flags: Qt.Dialog
     title: versionInfo ? qsTr("Storage: %1").arg(versionInfo.versionName) : qsTr("Storage")
-    color: "#333"
+    color: "#07111f"
 
     StorageManager {
         id: storageManager
@@ -81,7 +81,7 @@ Window {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#282828"
+            color: "#081725"
             border.color: "#555"
             radius: 3
 

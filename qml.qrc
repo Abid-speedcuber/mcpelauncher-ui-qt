@@ -15,6 +15,7 @@
         <file>qml/Components/MComboBox.qml</file>
         <file>qml/Components/MProgressBar.qml</file>
         <file>qml/Components/MText.qml</file>
+        <file>qml/Components/MTextField.qml</file>
         <file>Resources/mcpelauncher-logo.svg</file>
         <file>Resources/mcpelauncher-icon.svg</file>
         <file>Resources/icon-copy.png</file>

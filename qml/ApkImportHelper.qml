@@ -19,6 +19,8 @@ Item {
     property bool allowIncompatible: false
     property bool trialMode: launcherSettings.trialMode
     property string pendingTargetDirectory: ""
+    property string pendingInstanceName: ""
+    property bool pendingCustomNamed: false
 
     id: root
 
@@ -36,7 +38,11 @@ Item {
             }
             console.log("Extracting " + apkExtractionTask.sources.join(','))
             apkExtractionTask.targetDirectory = root.pendingTargetDirectory
+            apkExtractionTask.instanceName = root.pendingInstanceName
+            apkExtractionTask.customNamed = root.pendingCustomNamed
             root.pendingTargetDirectory = ""
+            root.pendingInstanceName = ""
+            root.pendingCustomNamed = false
             extractingApk = true
             root.started()
             apkExtractionTask.start()
@@ -79,13 +85,17 @@ Item {
         title: "Apk extraction"
     }
 
-    function pickFile() {
+    function pickFile(instanceName) {
         pendingTargetDirectory = ""
+        pendingInstanceName = instanceName ? instanceName.trim() : ""
+        pendingCustomNamed = pendingInstanceName.length > 0
         apkPicker.open()
     }
 
     function pickUpdate(targetDirectory) {
         pendingTargetDirectory = targetDirectory
+        pendingInstanceName = ""
+        pendingCustomNamed = false
         apkPicker.open()
     }
 }

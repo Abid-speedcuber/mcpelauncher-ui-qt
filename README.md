@@ -1,4 +1,4 @@
-# Unofficial Bedrock APK Launcher
+# Minecraft Pocket Edition Launcher
 
 This is a minimal, unofficial fork of
 [`minecraft-linux/mcpelauncher-ui-qt`](https://github.com/minecraft-linux/mcpelauncher-ui-qt).
@@ -67,7 +67,7 @@ Flatpak will fetch the KDE runtime from Flathub if it is not already installed.
 
 In the app:
 
-1. Click **Import APK**.
+1. Click **Add instance**.
 2. Select your legally obtained local APK.
 3. Select the imported version.
 4. Click **Play**.

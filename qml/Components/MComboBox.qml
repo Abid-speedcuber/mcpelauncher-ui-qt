@@ -13,7 +13,7 @@ T.ComboBox {
 
     background: Rectangle {
         border.color: control.hovered ? "#666" : "#555"
-        color: "#1e1e1e"
+        color: "#081725"
         FocusBorder {
             visible: control.visualFocus
         }
@@ -88,7 +88,7 @@ T.ComboBox {
         }
 
         background: Rectangle {
-            color: "#1e1e1e"
+            color: "#081725"
             border.color: "#555"
             radius: 2
         }

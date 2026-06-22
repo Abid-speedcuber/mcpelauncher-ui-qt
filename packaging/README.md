@@ -77,7 +77,7 @@ path.
 
 Suggested public names:
 
-- Unofficial Bedrock APK Launcher
+- Minecraft Pocket Edition Launcher
 - Local Bedrock APK Launcher
 - mcpelauncher-minimal
 

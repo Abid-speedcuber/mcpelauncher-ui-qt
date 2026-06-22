@@ -19,7 +19,7 @@ Window {
     flags: Qt.Dialog
     title: qsTr("Import packs")
     visible: packImportTask.active
-    color: "#333"
+    color: "#07111f"
 
     onClosing: function (close) {
         close.accepted = false

@@ -12,11 +12,13 @@ ColumnLayout {
     spacing: 0
 
     property alias headerContent: baseHeader.content
+    property alias headerTitle: baseHeader.title
+    property alias headerSubtitle: baseHeader.subtitle
 
     BaseHeader {
         id: baseHeader
         Layout.fillWidth: true
-        title: qsTr("Unofficial Bedrock APK Launcher")
-        subtitle: LAUNCHER_VERSION_NAME ? qsTr("%1 (build %2)").arg(LAUNCHER_VERSION_NAME).arg((LAUNCHER_VERSION_CODE || "Unknown").toString()) : ""
+        title: qsTr("Minecraft Pocket Edition Launcher")
+        subtitle: qsTr("A debloated direct fork of mrarm's MCPE Launcher")
     }
 }

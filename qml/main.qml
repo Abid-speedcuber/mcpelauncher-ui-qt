@@ -4,13 +4,22 @@ import QtQuick.Dialogs
 import QtQuick.Controls
 import io.mrarm.mcpelauncher 1.0
 
-Window {
+ApplicationWindow {
     id: window
     visible: true
     width: 800
     height: 600
-    title: qsTr("Unofficial Bedrock APK Launcher")
-    color: "#333333"
+    title: qsTr("Minecraft Pocket Edition Launcher")
+    color: "#050c16"
+    palette.window: "#050c16"
+    palette.windowText: "#dbe9f4"
+    palette.base: "#07111f"
+    palette.alternateBase: "#0a1b2a"
+    palette.text: "#dbe9f4"
+    palette.button: "#0b1c2c"
+    palette.buttonText: "#dbe9f4"
+    palette.highlight: "#14506a"
+    palette.highlightedText: "#ffffff"
     property string currentGameDataDir: ""
 
     StackView {

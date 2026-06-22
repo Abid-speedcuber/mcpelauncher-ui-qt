@@ -8,7 +8,7 @@ T.ProgressBar {
 
     background: Rectangle {
         anchors.fill: parent
-        color: "#1e1e1e"
+        color: "#081725"
     }
 
     contentItem: Item {

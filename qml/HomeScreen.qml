@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Window
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Controls
 import "Components"
@@ -13,67 +12,82 @@ BaseScreen {
     property var launcher
     property var logModel
     property var selectedVersion: null
+    property bool hasInstances: versionGrid.count > 0
 
     signal gameLogRequested()
 
-    headerContent: RowLayout {
-        anchors.fill: parent
-        Text {
-            text: qsTr("Unofficial Bedrock APK Launcher")
-            color: "white"
-            font.pointSize: 14
-            font.bold: true
-            Layout.leftMargin: 10
-        }
-        Item { Layout.fillWidth: true }
-    }
-
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 10
+        anchors.margins: 16
+        spacing: 12
 
-        Text {
-            text: qsTr("Select an imported game version:")
-            color: "white"
-            font.pointSize: 12
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: !homeScreen.hasInstances
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                width: Math.min(parent.width - 32, 360)
+                spacing: 8
+
+                MButton {
+                    text: qsTr("Import APK to start")
+                    Layout.fillWidth: true
+                    implicitHeight: 48
+                    onClicked: apkImportWindow.pickFile()
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Get an x86_64 Minecraft APK and import it here")
+                    color: "#8fa6bd"
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+            }
         }
 
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#444444"
-            radius: 5
+            visible: homeScreen.hasInstances
+            color: "#07111f"
+            border.color: "#142b3e"
+            radius: 6
 
-            ListView {
-                id: versionList
+            GridView {
+                id: versionGrid
                 anchors.fill: parent
-                anchors.margins: 5
+                anchors.margins: 12
                 clip: true
+                cellWidth: 184
+                cellHeight: 184
                 model: versionManager.versions.getAll()
 
                 delegate: Rectangle {
+                    id: instanceCard
                     property var versionInfo: modelData
                     property bool dragHover: false
 
-                    width: versionList.width
-                    height: 60
-                    color: dragHover ? "#364e63" : (homeScreen.selectedVersion === versionInfo ? "#24513a" : (index % 2 === 0 ? "#333333" : "#3a3a3a"))
-                    radius: 3
-                    border.color: dragHover ? "#78bde8" : (homeScreen.selectedVersion === versionInfo ? "#5fc48b" : (mouseArea.containsMouse ? "#555555" : "transparent"))
+                    width: 164
+                    height: 164
+                    color: dragHover ? "#123651" : (homeScreen.selectedVersion === versionInfo ? "#0e3b46" : "#0a1b2a")
+                    radius: 6
+                    border.width: 1
+                    border.color: dragHover ? "#68b6e3" : (homeScreen.selectedVersion === versionInfo ? "#43b59b" : (cardMouse.containsMouse ? "#315f7d" : "#173047"))
 
                     DropArea {
                         anchors.fill: parent
                         keys: ["text/uri-list"]
                         onEntered: {
                             dragHover = true
-                            versionList.currentIndex = index
+                            versionGrid.currentIndex = index
                             homeScreen.selectedVersion = versionInfo
                         }
                         onExited: dragHover = false
-                        onDropped: function (drop) {
+                        onDropped: function(drop) {
                             dragHover = false
-                            versionList.currentIndex = index
+                            versionGrid.currentIndex = index
                             homeScreen.selectedVersion = versionInfo
                             if (drop.hasUrls) {
                                 packImportWindow.importUrls(drop.urls)
@@ -83,141 +97,121 @@ BaseScreen {
                     }
 
                     MouseArea {
-                        id: mouseArea
+                        id: cardMouse
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: {
-                            versionList.currentIndex = index
+                        onClicked: function(mouse) {
+                            versionGrid.currentIndex = index
                             homeScreen.selectedVersion = versionInfo
-                            if (mouse.button === Qt.RightButton) {
-                                versionContextMenu.popup()
-                            }
+                            if (mouse.button === Qt.RightButton)
+                                instanceMenu.popup()
                         }
                     }
 
                     Menu {
-                        id: versionContextMenu
-                        MenuItem {
-                            text: qsTr("Import packs...")
-                            onTriggered: packImportWindow.pickFiles()
-                        }
-                        MenuItem {
-                            text: qsTr("Update APK...")
-                            onTriggered: apkImportWindow.pickUpdate(versionInfo)
-                        }
+                        id: instanceMenu
+                        MenuItem { text: qsTr("Import packs..."); onTriggered: packImportWindow.pickFiles() }
+                        MenuItem { text: qsTr("Update APK..."); onTriggered: apkImportWindow.pickUpdate(versionInfo) }
+                        MenuItem { text: qsTr("Rename..."); onTriggered: renameWindow.openFor(versionInfo) }
                         MenuItem {
                             text: qsTr("Duplicate")
-                            onTriggered: {
-                                var copy = versionManager.duplicateVersion(versionInfo)
-                                refreshVersions(copy)
-                            }
+                            onTriggered: refreshVersions(versionManager.duplicateVersion(versionInfo))
                         }
-                        MenuItem {
-                            text: qsTr("Manage storage...")
-                            onTriggered: storageWindow.openFor(versionInfo)
-                        }
+                        MenuItem { text: qsTr("Manage storage..."); onTriggered: storageWindow.openFor(versionInfo) }
                         MenuSeparator {}
-                        MenuItem {
-                            text: qsTr("Delete...")
-                            onTriggered: deleteWindow.openFor(versionInfo)
-                        }
+                        MenuItem { text: qsTr("Delete..."); onTriggered: deleteWindow.openFor(versionInfo) }
                     }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 2
+                        anchors.margins: 10
+                        spacing: 5
+
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: Math.min(92, instanceCard.width * 0.48)
+                            Layout.preferredHeight: width
+                            color: "#050c16"
+                            radius: 5
+                            clip: true
+
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                source: versionManager.getIconPathFor(versionInfo)
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                mipmap: true
+                            }
+                        }
 
                         Text {
-                            text: modelData.versionName
+                            Layout.fillWidth: true
+                            text: modelData.instanceName
                             color: "white"
                             font.pointSize: 11
                             font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
-
                         Text {
-                            text: qsTr("Directory: %1").arg(modelData.directory)
-                            color: "#cccccc"
-                            font.pointSize: 9
-                        }
-
-                        Text {
-                            text: qsTr("Storage: %1").arg(modelData.dataDirectory || versionManager.getDataDirectoryFor(modelData))
-                            color: "#aaaaaa"
-                            font.pointSize: 9
-                            elide: Text.ElideMiddle
                             Layout.fillWidth: true
-                        }
-
-                        Text {
-                            text: qsTr("Architectures: %1").arg(modelData.archs.join(", "))
-                            color: "#999999"
+                            text: qsTr("Version %1").arg(modelData.versionName)
+                            color: "#a9bed0"
                             font.pointSize: 9
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: versionManager.getDataDirectoryFor(modelData)
+                            color: "#708ba2"
+                            font.pointSize: 8
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideMiddle
                         }
                     }
                 }
 
-                ScrollBar.vertical: ScrollBar { }
+                ScrollBar.vertical: ScrollBar {}
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
+            visible: homeScreen.hasInstances
 
-            Button {
-                text: qsTr("Import APK")
+            MButton {
+                text: qsTr("Add instance")
                 Layout.fillWidth: true
-                onClicked: {
-                    apkImportWindow.pickFile()
-                }
+                onClicked: apkImportWindow.pickFile()
             }
-
-            Button {
-                text: qsTr("Import Packs")
+            MButton {
+                text: qsTr("Import packs")
                 Layout.fillWidth: true
                 enabled: homeScreen.selectedVersion !== null
                 onClicked: packImportWindow.pickFiles()
             }
-
-            Button {
-                text: qsTr("Game Log")
+            MButton {
+                text: qsTr("Game log")
                 Layout.fillWidth: true
                 enabled: launcher.running || launcher.crashed || (logModel && logModel.count > 0)
                 onClicked: homeScreen.gameLogRequested()
             }
-
-            Button {
-                text: launcher.running ? qsTr("Play Another") : qsTr("Play")
+            MButton {
+                text: launcher.running ? qsTr("Play another") : qsTr("Play")
                 Layout.fillWidth: true
                 enabled: homeScreen.selectedVersion !== null
-                onClicked: {
-                    if (homeScreen.selectedVersion) {
-                        var gameDir = versionManager.getDirectoryFor(homeScreen.selectedVersion)
-                        var dataDir = versionManager.getDataDirectoryFor(homeScreen.selectedVersion)
-                        if (logModel) {
-                            if (!launcher.running)
-                                logModel.clear()
-                            logModel.append({ "display": "Launching " + homeScreen.selectedVersion.versionName })
-                            logModel.append({ "display": "Game directory: " + gameDir })
-                            logModel.append({ "display": "Data directory: " + dataDir })
-                        }
-                        launcher.gameDir = gameDir
-                        launcher.dataDir = dataDir
-                        if (logModel) {
-                            logModel.append({ "display": "Starting launcher process..." })
-                        }
-                        launcher.start(false, "", true, "")
-                    }
-                }
+                onClicked: launchSelected()
             }
         }
 
         Text {
             Layout.fillWidth: true
-            text: qsTr("Unofficial GPLv3 fork of mcpelauncher-ui-qt. Not affiliated with Mojang or Microsoft. No game files are included.")
-            color: "#b8b8b8"
+            text: qsTr("Unofficial GPLv3 fork. Not affiliated with Mojang or Microsoft. No game files are included.")
+            color: "#708ba2"
             font.pointSize: 9
             wrapMode: Text.WordWrap
         }
@@ -226,9 +220,7 @@ BaseScreen {
     ApkImportWindow {
         id: apkImportWindow
         versionManager: homeScreen.versionManager
-        onImportFinished: {
-            refreshVersions(null)
-        }
+        onImportFinished: refreshVersions(null)
     }
 
     PackImportWindow {
@@ -236,20 +228,71 @@ BaseScreen {
         gameDataDir: homeScreen.selectedVersion ? versionManager.getDataDirectoryFor(homeScreen.selectedVersion) : ""
     }
 
-    InstanceStorageWindow {
-        id: storageWindow
-        versionManager: homeScreen.versionManager
+    InstanceStorageWindow { id: storageWindow; versionManager: homeScreen.versionManager }
+
+    Window {
+        id: renameWindow
+        width: 380
+        height: renameLayout.implicitHeight + 28
+        flags: Qt.Dialog
+        title: qsTr("Rename instance")
+        color: "#07111f"
+        property var versionInfo: null
+
+        function openFor(version) {
+            versionInfo = version
+            renameField.text = version ? version.instanceName : ""
+            show()
+            raise()
+            requestActivate()
+            renameField.forceActiveFocus()
+            renameField.selectAll()
+        }
+
+        ColumnLayout {
+            id: renameLayout
+            anchors.fill: parent
+            anchors.margins: 14
+            spacing: 10
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Renaming also moves this instance's storage folder.")
+                color: "#a9bed0"
+                wrapMode: Text.WordWrap
+            }
+            MTextField {
+                id: renameField
+                Layout.fillWidth: true
+                placeholderText: qsTr("Instance name")
+                onAccepted: renameButton.clicked()
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                MButton { text: qsTr("Cancel"); Layout.fillWidth: true; onClicked: renameWindow.close() }
+                MButton {
+                    id: renameButton
+                    text: qsTr("Rename")
+                    Layout.fillWidth: true
+                    enabled: renameField.text.trim().length > 0
+                    onClicked: {
+                        if (versionManager.renameVersion(renameWindow.versionInfo, renameField.text)) {
+                            var renamed = renameWindow.versionInfo
+                            renameWindow.close()
+                            refreshVersions(renamed)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Window {
         id: deleteWindow
-        visible: false
-        width: 360
-        height: deleteLayout.implicitHeight + 24
+        width: 380
+        height: deleteLayout.implicitHeight + 28
         flags: Qt.Dialog
         title: qsTr("Delete instance")
-        color: "#333"
-
+        color: "#07111f"
         property var versionInfo: null
 
         function openFor(version) {
@@ -262,47 +305,48 @@ BaseScreen {
         ColumnLayout {
             id: deleteLayout
             anchors.fill: parent
-            anchors.margins: 12
+            anchors.margins: 14
             spacing: 10
-
             Text {
                 Layout.fillWidth: true
                 color: "white"
                 wrapMode: Text.WordWrap
-                text: deleteWindow.versionInfo ? qsTr("Delete %1?").arg(deleteWindow.versionInfo.versionName) : ""
+                text: deleteWindow.versionInfo ? qsTr("Delete %1?").arg(deleteWindow.versionInfo.instanceName) : ""
             }
-
-            Button {
+            MButton {
                 Layout.fillWidth: true
                 text: qsTr("Delete APK only")
-                onClicked: {
-                    versionManager.deleteVersion(deleteWindow.versionInfo, false)
-                    deleteWindow.close()
-                    refreshVersions(null)
-                }
+                onClicked: { versionManager.deleteVersion(deleteWindow.versionInfo, false); deleteWindow.close(); refreshVersions(null) }
             }
-
-            Button {
+            MButton {
                 Layout.fillWidth: true
                 text: qsTr("Delete APK and all data")
-                onClicked: {
-                    versionManager.deleteVersion(deleteWindow.versionInfo, true)
-                    deleteWindow.close()
-                    refreshVersions(null)
-                }
+                onClicked: { versionManager.deleteVersion(deleteWindow.versionInfo, true); deleteWindow.close(); refreshVersions(null) }
             }
-
-            Button {
-                Layout.fillWidth: true
-                text: qsTr("Cancel")
-                onClicked: deleteWindow.close()
-            }
+            MButton { Layout.fillWidth: true; text: qsTr("Cancel"); onClicked: deleteWindow.close() }
         }
     }
 
+    function launchSelected() {
+        if (!homeScreen.selectedVersion)
+            return
+        var gameDir = versionManager.getDirectoryFor(homeScreen.selectedVersion)
+        var dataDir = versionManager.getDataDirectoryFor(homeScreen.selectedVersion)
+        if (logModel) {
+            if (!launcher.running)
+                logModel.clear()
+            logModel.append({"display": "Launching " + homeScreen.selectedVersion.instanceName})
+            logModel.append({"display": "Game directory: " + gameDir})
+            logModel.append({"display": "Data directory: " + dataDir})
+        }
+        launcher.gameDir = gameDir
+        launcher.dataDir = dataDir
+        launcher.start(false, "", true, "")
+    }
+
     function refreshVersions(preferredVersion) {
-        versionList.model = versionManager.versions.getAll()
+        versionGrid.model = versionManager.versions.getAll()
         homeScreen.selectedVersion = preferredVersion
-        versionList.currentIndex = -1
+        versionGrid.currentIndex = -1
     }
 }

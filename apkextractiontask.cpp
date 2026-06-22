@@ -87,7 +87,19 @@ void ApkExtractionTask::run() {
             qDebug() << "Apk info: versionCode=" << apkInfo.versionCode
                     << " versionName=" << QString::fromStdString(apkInfo.versionName);
 
-            extractor.extractTo(MinecraftExtractUtils::filterMinecraftFiles(path, isBaseApk),
+            auto minecraftFilter = MinecraftExtractUtils::filterMinecraftFiles(path, isBaseApk);
+            auto instanceFilter = [minecraftFilter, path](const char* filename, std::string& outName) {
+                if (minecraftFilter(filename, outName))
+                    return true;
+                std::string name(filename);
+                if (name.rfind("res/drawable-", 0) == 0 && name.size() > 9 &&
+                    name.compare(name.size() - 9, 9, "/icon.png") == 0) {
+                    outName = path + "/assets/icon.png";
+                    return true;
+                }
+                return false;
+            };
+            extractor.extractTo(instanceFilter,
                     [this](size_t current, size_t max, ZipExtractor::FileHandle const&, size_t, size_t) {
                 emit progress((float)  current / max);
             });
@@ -154,6 +166,8 @@ void ApkExtractionTask::run() {
     } catch (std::exception& e) {
         m_versionName.clear();
         m_targetDirectory.clear();
+        m_instanceName.clear();
+        m_customNamed = false;
         emit error(e.what());
         return;
     }
@@ -164,5 +178,7 @@ void ApkExtractionTask::run() {
 }
 
 void ApkExtractionTask::onVersionInformationObtained(const QString &directory, const QString &versionName, int versionCode) {
-    versionManager()->addVersion(directory, versionName, versionCode);
+    versionManager()->addVersion(directory, versionName, versionCode, QString(), m_instanceName, m_customNamed);
+    m_instanceName.clear();
+    m_customNamed = false;
 }
