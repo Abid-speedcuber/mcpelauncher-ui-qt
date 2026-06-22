@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-APP_ID="io.github.Abid_speedcuber.mcpelauncher_minimal"
+APP_ID="io.github.Abid_speedcuber.mcpelauncher"
 MANIFEST="packaging/${APP_ID}.yml"
 CLIENT32_MANIFEST="packaging/client32/mcpelauncher-client32.yml"
 CLIENT32_BUILD_DIR="build-client32"

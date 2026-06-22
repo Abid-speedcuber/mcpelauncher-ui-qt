@@ -12,7 +12,7 @@ if [ ! -d repo/objects ]; then
 fi
 
 flatpak build-update-repo repo
-./scripts/write-flatpakrepo.sh "$REPO_URL" mcpelauncher-minimal.flatpakrepo
+./scripts/write-flatpakrepo.sh "$REPO_URL" mcpelauncher.flatpakrepo
 
 if [ -e "$WORKTREE/.git" ]; then
     git -C "$WORKTREE" fetch "$REMOTE" "$BRANCH" >/dev/null 2>&1 || true
@@ -40,14 +40,14 @@ fi
 
 mkdir -p "$WORKTREE/repo"
 rsync -a --delete repo/ "$WORKTREE/repo/"
-cp mcpelauncher-minimal.flatpakrepo "$WORKTREE/"
+cp mcpelauncher.flatpakrepo "$WORKTREE/"
 
 cat > "$WORKTREE/index.html" <<'EOF'
 <!doctype html>
 <meta charset="utf-8">
-<title>Unofficial Bedrock APK Launcher Flatpak repo</title>
-<h1>Unofficial Bedrock APK Launcher Flatpak repo</h1>
-<p><a href="mcpelauncher-minimal.flatpakrepo">Download the Flatpak remote file</a></p>
+<title>Minecraft Pocket Edition Launcher Flatpak repo</title>
+<h1>Minecraft Pocket Edition Launcher Flatpak repo</h1>
+<p><a href="mcpelauncher.flatpakrepo">Download the Flatpak remote file</a></p>
 EOF
 
 git -C "$WORKTREE" add .

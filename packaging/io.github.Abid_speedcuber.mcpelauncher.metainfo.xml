@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.Abid_speedcuber.mcpelauncher_minimal</id>
+  <id>io.github.Abid_speedcuber.mcpelauncher</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
   <name>Minecraft Pocket Edition Launcher</name>
@@ -23,12 +23,23 @@
       upstream mcpelauncher maintainers.
     </p>
   </description>
-  <launchable type="desktop-id">io.github.Abid_speedcuber.mcpelauncher_minimal.desktop</launchable>
+  <launchable type="desktop-id">io.github.Abid_speedcuber.mcpelauncher.desktop</launchable>
   <url type="homepage">https://github.com/Abid-speedcuber/mcpelauncher-ui-qt</url>
   <url type="vcs-browser">https://github.com/Abid-speedcuber/mcpelauncher-ui-qt</url>
   <url type="bugtracker">https://github.com/Abid-speedcuber/mcpelauncher-ui-qt/issues</url>
   <provides>
     <binary>mcpelauncher-ui-qt</binary>
+    <id>io.github.Abid_speedcuber.mcpelauncher_minimal.desktop</id>
   </provides>
+  <replaces>
+    <id>io.github.Abid_speedcuber.mcpelauncher_minimal</id>
+  </replaces>
+  <releases>
+    <release version="0.2.0" date="2026-06-22">
+      <description>
+        <p>Adds named, isolated instances, storage management, launcher patches, and the redesigned interface.</p>
+      </description>
+    </release>
+  </releases>
   <content_rating type="oars-1.1" />
 </component>

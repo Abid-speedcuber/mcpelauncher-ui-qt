@@ -53,7 +53,7 @@ git clone https://github.com/Abid-speedcuber/mcpelauncher-ui-qt.git
 cd mcpelauncher-ui-qt
 ./scripts/build-flatpak-bundle.sh
 flatpak install --user --reinstall -y ./unofficial-bedrock-apk-launcher.flatpak
-flatpak run io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak run io.github.Abid_speedcuber.mcpelauncher
 ```
 
 If a release bundle was built from this patched repo, users can install that
@@ -61,7 +61,7 @@ bundle directly:
 
 ```bash
 flatpak install --user --reinstall -y ./unofficial-bedrock-apk-launcher.flatpak
-flatpak run io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak run io.github.Abid_speedcuber.mcpelauncher
 ```
 
 ## Runtime Settings
@@ -70,7 +70,7 @@ The default high-distance values are controlled by the launcher-client settings
 file inside the Flatpak app data:
 
 ```text
-~/.var/app/io.github.Abid_speedcuber.mcpelauncher_minimal/data/mcpelauncher/mcpelauncher-client-settings.txt
+~/.var/app/io.github.Abid_speedcuber.mcpelauncher/data/mcpelauncher/mcpelauncher-client-settings.txt
 ```
 
 Relevant keys:
@@ -89,15 +89,15 @@ has real CPU and world-tick costs once chunks are actually simulated.
 ## How To Verify
 
 The Qt launcher captures game output in its own log view, so terminal output from
-`flatpak run io.github.Abid_speedcuber.mcpelauncher_minimal` may be quiet. A
+`flatpak run io.github.Abid_speedcuber.mcpelauncher` may be quiet. A
 direct client probe is easier:
 
 ```bash
 mkdir -p ~/Documents/mcpelauncher-diag
 LOG="$HOME/Documents/mcpelauncher-diag/$(date +%Y%m%d-%H%M%S)-direct-client.log"
 timeout 25s flatpak run --command=mcpelauncher-client \
-  io.github.Abid_speedcuber.mcpelauncher_minimal \
-  -dg "$HOME/.var/app/io.github.Abid_speedcuber.mcpelauncher_minimal/data/mcpelauncher/versions/1.26.22.1" \
+  io.github.Abid_speedcuber.mcpelauncher \
+  -dg "$HOME/.var/app/io.github.Abid_speedcuber.mcpelauncher/data/mcpelauncher/versions/1.26.22.1" \
   2>&1 | tee "$LOG"
 
 rg -n "Applied .*patch|Applied .*hook|OreUI simulation|Simulation distance provider|options gfx|Skipped .*patch|Skipped .*hook" "$LOG"

@@ -46,6 +46,14 @@ ApplicationWindow {
             launcher: gameLauncher
             logModel: gameLog
             onGameLogRequested: stackView.push(panelGameLog)
+            onHelpRequested: stackView.push(panelHelp)
+        }
+    }
+
+    Component {
+        id: panelHelp
+        HelpScreen {
+            onBackRequested: stackView.pop()
         }
     }
 

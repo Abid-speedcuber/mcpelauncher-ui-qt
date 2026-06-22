@@ -1,5 +1,5 @@
 set(CPACK_PACKAGE_NAME "mcpelauncher-ui-qt")
-set(CPACK_PACKAGE_VENDOR "Unofficial Bedrock APK Launcher contributors")
+set(CPACK_PACKAGE_VENDOR "Minecraft Pocket Edition Launcher contributors")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Unofficial local APK import and launch UI for mcpelauncher")
 set(CPACK_PACKAGE_CONTACT "https://github.com/Abid-speedcuber/mcpelauncher-ui-qt/issues")
 set(CPACK_PACKAGE_VERSION "${MANIFEST_GIT_COMMIT_HASH}")

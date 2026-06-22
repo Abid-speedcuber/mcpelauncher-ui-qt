@@ -1,12 +1,12 @@
 #!/bin/sh
 set -eu
 
-APP_ID="io.github.Abid_speedcuber.mcpelauncher_minimal"
+APP_ID="io.github.Abid_speedcuber.mcpelauncher"
 BUNDLE="${BUNDLE:-unofficial-bedrock-apk-launcher.flatpak}"
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-gh-pages}"
 REPO_URL="${REPO_URL:-https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/repo/}"
-REMOTE_FILE_URL="${REMOTE_FILE_URL:-https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher-minimal.flatpakrepo}"
+REMOTE_FILE_URL="${REMOTE_FILE_URL:-https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher.flatpakrepo}"
 TAG="${1:-${TAG:-}}"
 
 need() {
@@ -32,7 +32,7 @@ fi
 
 echo "==> Refreshing Flatpak repo metadata"
 flatpak build-update-repo repo
-./scripts/write-flatpakrepo.sh "$REPO_URL" mcpelauncher-minimal.flatpakrepo
+./scripts/write-flatpakrepo.sh "$REPO_URL" mcpelauncher.flatpakrepo
 
 echo "==> Publishing Flatpak update repo to ${REMOTE}/${BRANCH}"
 REMOTE="$REMOTE" BRANCH="$BRANCH" REPO_URL="$REPO_URL" ./scripts/publish-flatpak-repo-gh-pages.sh
@@ -59,13 +59,13 @@ if [ -n "$TAG" ]; then
 
     gh release create "$TAG" \
         "$BUNDLE" \
-        "mcpelauncher-minimal.flatpakrepo" \
-        --title "Unofficial Bedrock APK Launcher ${TAG}" \
+        "mcpelauncher.flatpakrepo" \
+        --title "Minecraft Pocket Edition Launcher ${TAG}" \
         --notes "Install the update remote once:
 
 \`\`\`sh
-flatpak remote-add --user --if-not-exists mcpelauncher-minimal ${REMOTE_FILE_URL}
-flatpak install --user mcpelauncher-minimal ${APP_ID}
+flatpak remote-add --user --if-not-exists mcpelauncher ${REMOTE_FILE_URL}
+flatpak install --user mcpelauncher ${APP_ID}
 \`\`\`
 
 After that, update with:
@@ -75,14 +75,14 @@ flatpak update ${APP_ID}
 \`\`\`
 
 The standalone .flatpak bundle is also attached for manual installs." \
-        || gh release upload "$TAG" "$BUNDLE" "mcpelauncher-minimal.flatpakrepo" --clobber
+        || gh release upload "$TAG" "$BUNDLE" "mcpelauncher.flatpakrepo" --clobber
 fi
 
 echo
 echo "Published:"
 echo "  Repo URL:      ${REPO_URL}"
 echo "  Remote file:   ${REMOTE_FILE_URL}"
-echo "  Install app:   flatpak install --user mcpelauncher-minimal ${APP_ID}"
+echo "  Install app:   flatpak install --user mcpelauncher ${APP_ID}"
 echo
 echo "Note: this publishes your own Flatpak repository, not official Flathub."
 echo "Official Flathub still requires a reviewed PR against flathub/flathub:new-pr."

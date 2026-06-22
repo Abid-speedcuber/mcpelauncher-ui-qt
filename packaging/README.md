@@ -79,6 +79,6 @@ Suggested public names:
 
 - Minecraft Pocket Edition Launcher
 - Local Bedrock APK Launcher
-- mcpelauncher-minimal
+- mcpelauncher
 
 Avoid implying official Mojang/Microsoft approval.

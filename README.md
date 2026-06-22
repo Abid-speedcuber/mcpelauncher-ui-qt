@@ -1,6 +1,6 @@
 # Minecraft Pocket Edition Launcher
 
-This is a minimal, unofficial fork of
+This is a direct, unofficial fork of
 [`minecraft-linux/mcpelauncher-ui-qt`](https://github.com/minecraft-linux/mcpelauncher-ui-qt).
 
 It removes the Google Play login, Google Play API, in-app APK downloading,
@@ -52,7 +52,7 @@ Then install a release bundle:
 
 ```sh
 flatpak install --user ./unofficial-bedrock-apk-launcher.flatpak
-flatpak run io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak run io.github.Abid_speedcuber.mcpelauncher
 ```
 
 If the bundle is attached to a GitHub release, the friend-facing flow is:
@@ -60,7 +60,7 @@ If the bundle is attached to a GitHub release, the friend-facing flow is:
 ```sh
 wget https://github.com/Abid-speedcuber/mcpelauncher-ui-qt/releases/latest/download/unofficial-bedrock-apk-launcher.flatpak
 flatpak install --user ./unofficial-bedrock-apk-launcher.flatpak
-flatpak run io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak run io.github.Abid_speedcuber.mcpelauncher
 ```
 
 Flatpak will fetch the KDE runtime from Flathub if it is not already installed.
@@ -111,7 +111,7 @@ assets: build each release, run `flatpak build-update-repo repo`, host the
 users install once from your remote and receive future builds with:
 
 ```sh
-flatpak update io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak update io.github.Abid_speedcuber.mcpelauncher
 ```
 
 Keep the app ID stable between releases; changing it makes Flatpak treat the
@@ -124,13 +124,13 @@ This repo includes a GitHub Pages helper for that flow:
 ./scripts/publish-flatpak-repo-gh-pages.sh
 ```
 
-That publishes `repo/` and `mcpelauncher-minimal.flatpakrepo` to the `gh-pages`
+That publishes `repo/` and `mcpelauncher.flatpakrepo` to the `gh-pages`
 branch. Enable GitHub Pages for that branch in the repository settings, then
 users can add the remote with:
 
 ```sh
-flatpak remote-add --user --if-not-exists mcpelauncher-minimal https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher-minimal.flatpakrepo
-flatpak install --user mcpelauncher-minimal io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak remote-add --user --if-not-exists mcpelauncher https://Abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher.flatpakrepo
+flatpak install --user mcpelauncher io.github.Abid_speedcuber.mcpelauncher
 ```
 
 For a tagged public release with both update repo publishing and GitHub Release

@@ -8,6 +8,7 @@
         <file>qml/BaseScreen.qml</file>
         <file>qml/ErrorScreen.qml</file>
         <file>qml/HomeScreen.qml</file>
+        <file>qml/HelpScreen.qml</file>
         <file>qml/GameLogScreen.qml</file>
         <file>qml/Components/BaseHeader.qml</file>
         <file>qml/Components/FocusBorder.qml</file>

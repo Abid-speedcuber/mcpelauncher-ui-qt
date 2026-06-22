@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-APP_ID="io.github.Abid_speedcuber.mcpelauncher_minimal"
+APP_ID="io.github.Abid_speedcuber.mcpelauncher"
 MANIFEST="packaging/${APP_ID}.yml"
 BUILD_DIR="${BUILD_DIR:-build-local}"
 BUNDLE="${BUNDLE:-unofficial-bedrock-apk-launcher.flatpak}"

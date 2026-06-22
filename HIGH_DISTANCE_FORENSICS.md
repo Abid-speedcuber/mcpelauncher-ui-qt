@@ -9,7 +9,7 @@ can re-walk it when Minecraft or the launcher moves underneath us.
 Known-good target:
 
 ```text
-Launcher Flatpak: io.github.Abid_speedcuber.mcpelauncher_minimal
+Launcher Flatpak: io.github.Abid_speedcuber.mcpelauncher
 Minecraft: 1.26.22.1
 Minecraft ABI: x86_64
 Installed Flatpak commit tested: 70fed6b33601bc6e473081630f43bf012c53be9fcbd57ad38f6bb460d03213d9
@@ -66,7 +66,7 @@ The visible settings screen had another authority.
 Running this:
 
 ```bash
-flatpak run io.github.Abid_speedcuber.mcpelauncher_minimal
+flatpak run io.github.Abid_speedcuber.mcpelauncher
 ```
 
 starts the Qt UI. The Qt UI captures game output into its own game log, so the
@@ -78,8 +78,8 @@ Use the direct client when debugging hooks:
 mkdir -p ~/Documents/mcpelauncher-diag
 LOG="$HOME/Documents/mcpelauncher-diag/$(date +%Y%m%d-%H%M%S)-direct-client.log"
 timeout 25s flatpak run --command=mcpelauncher-client \
-  io.github.Abid_speedcuber.mcpelauncher_minimal \
-  -dg "$HOME/.var/app/io.github.Abid_speedcuber.mcpelauncher_minimal/data/mcpelauncher/versions/1.26.22.1" \
+  io.github.Abid_speedcuber.mcpelauncher \
+  -dg "$HOME/.var/app/io.github.Abid_speedcuber.mcpelauncher/data/mcpelauncher/versions/1.26.22.1" \
   2>&1 | tee "$LOG"
 
 rg -n "Applied .*patch|Applied .*hook|OreUI simulation|Simulation distance provider|options gfx|Skipped .*patch|Skipped .*hook|pointer mismatch|byte pattern mismatch" "$LOG"
@@ -226,7 +226,7 @@ region. A useful target was:
 One useful scan was a RIP-relative `lea` scanner over `.text`:
 
 ```bash
-LIB="$HOME/.var/app/io.github.Abid_speedcuber.mcpelauncher_minimal/data/mcpelauncher/versions/1.26.22.1/lib/x86_64/libminecraftpe.so"
+LIB="$HOME/.var/app/io.github.Abid_speedcuber.mcpelauncher/data/mcpelauncher/versions/1.26.22.1/lib/x86_64/libminecraftpe.so"
 python3 - <<'PY' "$LIB"
 import sys, struct
 path=sys.argv[1]
@@ -327,9 +327,9 @@ flatpak install --user --reinstall -y ./unofficial-bedrock-apk-launcher.flatpak
 Then verify:
 
 ```bash
-flatpak info --user io.github.Abid_speedcuber.mcpelauncher_minimal | rg "Commit|Installed|Subject|Date"
+flatpak info --user io.github.Abid_speedcuber.mcpelauncher | rg "Commit|Installed|Subject|Date"
 grep -aF "OreUI simulation distance options max" -n \
-  ~/.local/share/flatpak/app/io.github.Abid_speedcuber.mcpelauncher_minimal/current/active/files/bin/mcpelauncher-client
+  ~/.local/share/flatpak/app/io.github.Abid_speedcuber.mcpelauncher/current/active/files/bin/mcpelauncher-client
 ```
 
 Run the direct client probe from the logging section.

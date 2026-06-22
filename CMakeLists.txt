@@ -60,11 +60,11 @@ target_link_libraries(${PROJECT_NAME} Qt6::Core Qt6::Quick Qt6::Widgets Qt6::Svg
 
 install(TARGETS mcpelauncher-ui-qt RUNTIME COMPONENT mcpelauncher-ui-qt DESTINATION bin)
 if (NOT APPLE)
-    install(FILES mcpelauncher-ui-qt.desktop RENAME io.github.Abid_speedcuber.mcpelauncher_minimal.desktop
+    install(FILES mcpelauncher-ui-qt.desktop RENAME io.github.Abid_speedcuber.mcpelauncher.desktop
             COMPONENT mcpelauncher-ui-qt DESTINATION share/applications)
-    install(FILES packaging/io.github.Abid_speedcuber.mcpelauncher_minimal.metainfo.xml
+    install(FILES packaging/io.github.Abid_speedcuber.mcpelauncher.metainfo.xml
             COMPONENT mcpelauncher-ui-qt DESTINATION share/metainfo)
-    install(FILES Resources/mcpelauncher-icon.svg RENAME io.github.Abid_speedcuber.mcpelauncher_minimal.svg
+    install(FILES Resources/mcpelauncher-icon.svg RENAME io.github.Abid_speedcuber.mcpelauncher.svg
             COMPONENT mcpelauncher-ui-qt DESTINATION share/icons/hicolor/scalable/apps)
 endif()
 include(CPackSettings.cmake)

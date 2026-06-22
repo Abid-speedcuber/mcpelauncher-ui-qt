@@ -14,11 +14,15 @@ ColumnLayout {
     property alias headerContent: baseHeader.content
     property alias headerTitle: baseHeader.title
     property alias headerSubtitle: baseHeader.subtitle
+    property alias headerHelpVisible: baseHeader.helpVisible
+
+    signal helpRequested()
 
     BaseHeader {
         id: baseHeader
         Layout.fillWidth: true
         title: qsTr("Minecraft Pocket Edition Launcher")
         subtitle: qsTr("A debloated direct fork of mrarm's MCPE Launcher")
+        onHelpRequested: rowLayout.helpRequested()
     }
 }

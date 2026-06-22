@@ -1,4 +1,4 @@
-app-id: io.github.Abid_speedcuber.mcpelauncher_minimal
+app-id: io.github.Abid_speedcuber.mcpelauncher
 runtime: org.kde.Platform
 runtime-version: "6.10"
 sdk: org.kde.Sdk
@@ -36,6 +36,8 @@ add-extensions:
     enable-if: active-gl-driver
 modules:
   - name: protobuf
+    make-args:
+      - -j8
     sources:
       - type: git
         url: https://github.com/protocolbuffers/protobuf.git

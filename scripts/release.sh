@@ -8,9 +8,9 @@ if [ $# -lt 1 ]; then
 fi
 
 TAG="$1"
-APP_ID="io.github.Abid_speedcuber.mcpelauncher_minimal"
+APP_ID="io.github.Abid_speedcuber.mcpelauncher"
 BUNDLE="unofficial-bedrock-apk-launcher.flatpak"
-REMOTE_URL="https://abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher-minimal.flatpakrepo"
+REMOTE_URL="https://abid-speedcuber.github.io/mcpelauncher-ui-qt/mcpelauncher.flatpakrepo"
 
 if ! command -v gh >/dev/null 2>&1; then
     echo "GitHub CLI (gh) is required to create/update the GitHub Release." >&2
@@ -44,13 +44,13 @@ fi
 
 gh release create "$TAG" \
     "$BUNDLE" \
-    "mcpelauncher-minimal.flatpakrepo" \
-    --title "Unofficial Bedrock APK Launcher ${TAG}" \
+    "mcpelauncher.flatpakrepo" \
+    --title "Minecraft Pocket Edition Launcher ${TAG}" \
     --notes "Install the update remote once:
 
 \`\`\`sh
-flatpak remote-add --user --if-not-exists mcpelauncher-minimal ${REMOTE_URL}
-flatpak install --user mcpelauncher-minimal ${APP_ID}
+flatpak remote-add --user --if-not-exists mcpelauncher ${REMOTE_URL}
+flatpak install --user mcpelauncher ${APP_ID}
 \`\`\`
 
 After that, update with:
@@ -60,7 +60,7 @@ flatpak update ${APP_ID}
 \`\`\`
 
 The standalone .flatpak bundle is also attached for manual installs." \
-    || gh release upload "$TAG" "$BUNDLE" "mcpelauncher-minimal.flatpakrepo" --clobber
+    || gh release upload "$TAG" "$BUNDLE" "mcpelauncher.flatpakrepo" --clobber
 
 echo "Release ${TAG} is published."
 echo "Users with the remote can update with: flatpak update ${APP_ID}"
