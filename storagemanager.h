@@ -24,6 +24,7 @@ public slots:
     bool deleteEntry(VersionInfo* version, QString category, QString name);
     bool copyEntry(VersionInfo* fromVersion, VersionInfo* toVersion, QString category, QString name);
     bool openCategory(VersionInfo* version, QString category) const;
+    bool openEntry(VersionInfo* version, QString category, QString name) const;
 };
 
 #endif

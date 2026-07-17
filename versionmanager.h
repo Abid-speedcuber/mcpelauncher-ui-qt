@@ -136,6 +136,7 @@ private:
 
     void loadVersions();
     void saveVersions();
+    bool normalizeDataDirectory(VersionInfo* version);
 
 public:
     VersionManager();

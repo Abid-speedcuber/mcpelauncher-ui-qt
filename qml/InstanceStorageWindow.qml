@@ -73,8 +73,12 @@ Window {
             }
 
             MButton {
-                text: qsTr("Open Folder")
+                text: qsTr("Show in Files")
                 onClicked: storageManager.openCategory(root.versionInfo, categoryBox.currentValue)
+
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Open this location in the default file manager")
+                ToolTip.delay: 500
             }
         }
 
@@ -82,7 +86,7 @@ Window {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: "#081725"
-            border.color: "#555"
+            border.color: "#24465e"
             radius: 3
 
             ListView {
@@ -94,16 +98,23 @@ Window {
                 currentIndex: root.selectedEntry
 
                 delegate: Rectangle {
+                    id: entryDelegate
+                    required property var modelData
                     width: entryList.width
                     height: 38
-                    color: index === root.selectedEntry ? "#24513a" : (index % 2 === 0 ? "#303030" : "#363636")
-                    border.color: mouseArea.containsMouse ? "#666" : "transparent"
+                    color: index === root.selectedEntry ? "#0e3b46" : (index % 2 === 0 ? "#0a1b2a" : "#0c2030")
+                    border.color: mouseArea.containsMouse ? "#315f7d" : "transparent"
 
                     MouseArea {
                         id: mouseArea
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: root.selectedEntry = index
+                        onDoubleClicked: {
+                            root.selectedEntry = index
+                            if (entryDelegate.modelData.isDir)
+                                storageManager.openEntry(root.versionInfo, categoryBox.currentValue, entryDelegate.modelData.name)
+                        }
                     }
 
                     RowLayout {
@@ -114,14 +125,14 @@ Window {
 
                         Text {
                             Layout.fillWidth: true
-                            text: modelData.name
+                            text: entryDelegate.modelData.name
                             color: "white"
                             elide: Text.ElideRight
                         }
 
                         Text {
-                            text: modelData.isDir ? qsTr("Folder") : qsTr("File")
-                            color: "#aaa"
+                            text: entryDelegate.modelData.isDir ? qsTr("Folder") : qsTr("File")
+                            color: "#8fa6bd"
                             font.pointSize: 9
                         }
                     }
@@ -138,7 +149,7 @@ Window {
             MComboBox {
                 id: targetBox
                 Layout.fillWidth: true
-                textRole: "versionName"
+                textRole: "instanceName"
                 model: root.targetVersions
             }
 

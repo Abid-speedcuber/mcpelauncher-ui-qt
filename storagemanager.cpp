@@ -105,3 +105,14 @@ bool StorageManager::openCategory(VersionInfo* version, QString category) const 
         return false;
     return m_versionManager->openDirectory(categoryDirectory(version, category));
 }
+
+bool StorageManager::openEntry(VersionInfo* version, QString category, QString name) const {
+    if (!m_versionManager || name.isEmpty())
+        return false;
+    QString parent = categoryDirectory(version, category);
+    QFileInfo target(QDir(parent).filePath(name));
+    QString parentPath = QFileInfo(parent).absoluteFilePath();
+    if (!target.isDir() || !target.absoluteFilePath().startsWith(parentPath + "/"))
+        return false;
+    return m_versionManager->openDirectory(target.absoluteFilePath());
+}

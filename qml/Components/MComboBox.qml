@@ -30,10 +30,12 @@ T.ComboBox {
     }
 
     delegate: ItemDelegate {
+        id: delegateRoot
+        required property var modelData
         width: parent ? parent.width : contentWidth
         contentItem: Text {
-            text: control.textRole ? (Array.isArray(control.model) ? modelData[control.textRole] : model[control.textRole]) : modelData
-            color: "#fff"
+            text: control.textRole ? (delegateRoot.modelData[control.textRole] || "") : delegateRoot.modelData
+            color: "#dbe9f4"
             font.pointSize: 10
             elide: Text.ElideRight
             verticalAlignment: Text.AlignVCenter
@@ -41,7 +43,7 @@ T.ComboBox {
         highlighted: control.highlightedIndex === index
         background: Rectangle {
             anchors.fill: parent
-            color: highlighted ? "#333" : "#1e1e1e"
+            color: highlighted ? "#123b53" : "#0b1c2c"
             radius: 2
 
             FocusBorder {
@@ -88,8 +90,8 @@ T.ComboBox {
         }
 
         background: Rectangle {
-            color: "#081725"
-            border.color: "#555"
+            color: "#071522"
+            border.color: "#24465e"
             radius: 2
         }
 

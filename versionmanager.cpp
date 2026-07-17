@@ -25,6 +25,7 @@ VersionManager::VersionManager() : m_versionList(m_versions) {
 
 void VersionManager::loadVersions() {
     QSettings settings(QDir(baseDir).filePath("versions.ini"), QSettings::IniFormat);
+    bool metadataChanged = false;
     for (QString const& group : settings.childGroups()) {
         settings.beginGroup(group);
         int size = settings.beginReadArray("codes");
@@ -43,6 +44,7 @@ void VersionManager::loadVersions() {
             ver->instanceName = settings.value("instanceName", ver->versionName).toString();
             ver->customNamed = settings.value("customNamed", false).toBool();
             m_versions[group] = ver;
+            metadataChanged |= normalizeDataDirectory(ver);
             applyHighDistanceAssetPatches(getDirectoryFor(ver));
         } else {
             settings.endArray();
@@ -58,6 +60,7 @@ void VersionManager::loadVersions() {
                 ver->versionName = settings.value("versionName").toString();
                 ver->instanceName = settings.value("instanceName", ver->versionName).toString();
                 ver->customNamed = settings.value("customNamed", false).toBool();
+                metadataChanged |= normalizeDataDirectory(ver);
                 for (auto &&abi : SupportedAndroidAbis::getAbis()) {
                     if (QFile(getDirectoryFor(ver->directory) + "/lib/" + QString::fromStdString(abi.first) + "/libminecraftpe.so").exists()) {
                         ver->codes[QString::fromStdString(abi.first)] = versionCode;
@@ -69,10 +72,18 @@ void VersionManager::loadVersions() {
         
         settings.endGroup();
     }
+    if (metadataChanged)
+        saveVersions();
 }
 
 void VersionManager::saveVersions() {
-    QSettings settings(QDir(baseDir).filePath("versions.ini"), QSettings::IniFormat);
+    QString settingsPath = QDir(baseDir).filePath("versions.ini");
+    QString backupPath = settingsPath + ".bak";
+    if (QFileInfo::exists(settingsPath)) {
+        QFile::remove(backupPath);
+        QFile::copy(settingsPath, backupPath);
+    }
+    QSettings settings(settingsPath, QSettings::IniFormat);
     settings.clear();
     for (auto const& ver : m_versions) {
         if (!ver)
@@ -97,6 +108,34 @@ void VersionManager::saveVersions() {
         settings.endGroup();
     }
     settings.sync();
+}
+
+bool VersionManager::normalizeDataDirectory(VersionInfo* version) {
+    if (!version || version->dataDirectory.isEmpty())
+        return false;
+
+    QString stored = QDir::cleanPath(version->dataDirectory);
+    QString currentInstances = QDir::cleanPath(instancesDir);
+    if (stored == currentInstances || stored.startsWith(currentInstances + "/")) {
+        if (stored == version->dataDirectory)
+            return false;
+        version->dataDirectory = stored;
+        return true;
+    }
+
+    QString marker = "/mcpelauncher/instances/";
+    int markerIndex = stored.lastIndexOf(marker);
+    if (markerIndex < 0 || QFileInfo::exists(stored))
+        return false;
+
+    QString relativePath = QDir::cleanPath(stored.mid(markerIndex + marker.size()));
+    if (relativePath.isEmpty() || relativePath == "." || relativePath == ".." ||
+        relativePath.startsWith("../") || QDir::isAbsolutePath(relativePath))
+        return false;
+
+    version->dataDirectory = QDir(currentInstances).filePath(relativePath);
+    qWarning() << "Rebased stale instance data path" << stored << "to" << version->dataDirectory;
+    return true;
 }
 
 QString VersionManager::getTempTemplate() {
@@ -179,6 +218,10 @@ void VersionManager::addVersion(QString directory, QString versionName, int vers
 QString VersionManager::getDataDirectoryFor(VersionInfo* version) {
     if (version == nullptr)
         return QString();
+    if (normalizeDataDirectory(version)) {
+        saveVersions();
+        emit version->metadataChanged();
+    }
     if (!version->dataDirectory.isEmpty())
         return version->dataDirectory;
     // Existing installs predate per-instance data. Keep them on the old shared

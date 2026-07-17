@@ -102,6 +102,10 @@ BaseScreen {
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        ToolTip.visible: containsMouse
+                        ToolTip.text: versionManager.getDataDirectoryFor(versionInfo)
+                        ToolTip.delay: 500
+                        ToolTip.timeout: 10000
                         onClicked: function(mouse) {
                             versionGrid.currentIndex = index
                             homeScreen.selectedVersion = versionInfo
